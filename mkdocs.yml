@@ -47,29 +47,59 @@ markdown_extensions:
 
 nav:
   - 序言: index.md
+
   - "卷一: 基石时代 (基础设施)":
-    - "1. 内存的七巧板: 内存池的设计": 01_infrastructure/memory_pool.md
+    - "1. 内存的七巧板: 连接级内存池的设计": 01_infrastructure/memory_pool.md
     - "2. 拷贝的艺术: 零拷贝 Buffer 的生存哲学": 01_infrastructure/zero_copy_buffer.md
     - "3. 管道与枢纽: 网络 IO 的架构抽象": 01_infrastructure/network_io_abstraction.md
     - "4. 打破全局锁: One-Loop-Per-Thread 的无锁演进": 01_infrastructure/thread_model_and_lockfree.md
     - "5. 时空的刻度: 高效定时器与事件循环的融合": 01_infrastructure/async_timer.md
-  - "卷二: 破冰之旅 (连接与握手)":
-    - "6. 护城河: 报文的首部与地址验证": 02_connection/initial_and_token.md
-    - "7. 解密迷宫: TLS 1.3 融合纪实": 02_connection/tls_and_decrypt.md
-  - "卷三: 生死契约 (发送管线与可靠性)":
-    - "8. 抽丝剥茧: Sender 下沉重构": 03_pipeline/sender_downshift.md
-    - "9. 隔离与承诺: 序列号空间与 Immediate ACK": 03_pipeline/pn_space_and_ack.md
-    - "10. 迷失与重生: 丢包探测与定时器幽灵": 03_pipeline/loss_detection_and_ptr.md
-  - "卷四: 秩序与抽象 (并发与流控)":
-    - "11. 双引擎: 连接控制与流控制的博弈": 04_flow_and_stream/flow_control_windows.md
-    - "12. 消除队头阻塞: Stream 状态机精解": 04_flow_and_stream/stream_state_machine.md
-  - "卷五: 抵达彼岸 (HTTP/3 与应用层)":
-    - "13. 重新映射: 从 QUIC 流到 Request/Response": 05_application/http3_mapping.md
-    - "14. QPACK: 头压缩引擎与状态挂钩": 05_application/qpack_compression.md
-  - "卷六: 生产级修养":
-    - "15. 黑暗中的灯塔: 无侵入式上下文追踪": 06_engineering/log_context_guard.md
-    - "16. 试炼场: 与 Nginx/Quiche 的互联互通": 06_engineering/interop_test.md
+
+  - "卷二: 破冰之旅 (QUIC 连接的建立与终止)":
+    - "6. 万物开端: QUIC Packet 解剖与连接世界地图": 02_connection/packet_and_frame_anatomy.md
+    - "7. 公开的秘密: Initial 密钥与 CRYPTO Frame 的起步逻辑": 02_connection/initial_keys_and_crypto_frame.md
+    - "8. 破冰之握: 连接建立与 TLS 融合": 02_connection/handshake_and_tls.md
+    - "9. 零等待的奇迹: 0-RTT 与会话恢复": 02_connection/zero_rtt_and_session_resume.md
+    - "10. 护城河: 地址验证与防放大攻击": 02_connection/address_validation.md
+    - "11. 连接的生死簿: 状态机与传输参数协商": 02_connection/connection_state_and_params.md
+    - "12. 会飞的连接: Connection ID 与路径迁移": 02_connection/connection_id_and_migration.md
+
+  - "卷三: 字节的契约 (可靠传输)":
+    - "13. 可靠性的代价: QUIC 为什么不再照搬 TCP": 03_reliable/why_quic_rebuilds_reliability.md
+    - "14. ACK 的艺术: 序列号空间与确认边界": 03_reliable/pn_space_and_ack.md
+    - "15. 消失与追踪: 丢包探测与 PTO 幽灵": 03_reliable/loss_detection_and_pto.md
+    - "16. 重传的边界: 重发的不是 Packet, 而是语义": 03_reliable/retransmission_semantics.md
+    - "17. 发包管线: PacketBuilder 与加密层调度": 03_reliable/packet_builder_and_encryption.md
+    - "18. 刺刀见红: 异步定时器与连接生命周期的暗战": 03_reliable/timer_and_lifecycle_war_story.md
+
+  - "卷四: 速度与节奏 (拥塞控制)":
+    - "19. 管道的容量: RTT 测量与拥塞窗口的第一原理": 04_congestion/rtt_and_cwnd.md
+    - "20. 三代王者: Reno、Cubic 与 BBR 演进史": 04_congestion/reno_cubic_bbr_evolution.md
+    - "21. BBR 的哲学: quicX 中三代拥塞控制的实践": 04_congestion/bbr_in_quicx.md
+
+  - "卷五: 河流与闸门 (多路复用与流控)":
+    - "22. 多路复用的前世今生: 从 HTTP/2 到 QUIC Stream": 05_flow_and_stream/multiplexing_history.md
+    - "23. 双引擎: 连接流控与流级流控的博弈": 05_flow_and_stream/flow_control_windows.md
+    - "24. 流的诞生与终结: 发送与接收状态机": 05_flow_and_stream/stream_state_machine.md
+    - "25. 背压的信号: BLOCKED 与 MAX 帧的全景": 05_flow_and_stream/blocked_and_max_frames.md
+
+  - "卷六: 抵达彼岸 (HTTP/3 与 QPACK)":
+    - "26. 换一张地图: HTTP/3 Frame 解剖与控制流": 06_http3/http3_frame_anatomy.md
+    - "27. 重新映射: 从 QUIC 流到 HTTP Request / Response": 06_http3/http3_mapping.md
+    - "28. 连接的旋钮: SETTINGS 帧的控制权": 06_http3/http3_settings.md
+    - "29. QPACK: 头压缩引擎与动态表": 06_http3/qpack_compression.md
+    - "30. 推送的代价: Server Push 的实现与取舍": 06_http3/server_push.md
+
+  - "卷七: 生产级修养":
+    - "31. 透明的眼睛: Metrics 与埋点体系": 07_engineering/metrics.md
+    - "32. 黑匣子: Qlog 可观测性实践": 07_engineering/qlog.md
+    - "33. 黑暗中的灯塔: 无侵入式上下文追踪": 07_engineering/log_context_guard.md
+    - "34. 抽丝剥茧: Sender 下沉重构": 07_engineering/sender_downshift.md
+    - "35. 试炼场: 与 Nginx / Quiche 的互联互通": 07_engineering/interop_test.md
+
   - "附录篇":
     - "深入剖析网络IO复用": articles/深入​剖析网络IO复用.md
     - "什么是面向对象编程": articles/什么是面向对象编程.md
-    - "ALB 编程实践": articles/alb 编程实践.md
+    - "如何避免软件腐朽": articles/如何避免软件腐朽.md
+    - "当查询遇到分布式": articles/当查询遇到分布式.md
+    - "软件性能之 CPU": articles/软件性能之cpu.md
