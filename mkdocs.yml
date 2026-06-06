@@ -25,7 +25,7 @@ theme:
         icon: material/weather-sunny
         name: 切换到浅色模式
   features:
-    - navigation.sections # 左侧边栏分组显示并支持折叠/展开
+    - navigation.indexes # 支持折叠，且卷名可点击直接进入导读
     - navigation.top # 返回顶部按钮
     - navigation.footer # 底部翻页组件
     - content.code.copy # 代码块复制按钮
