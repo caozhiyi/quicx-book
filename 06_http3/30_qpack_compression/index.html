@@ -1,0 +1,2923 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="从协议设计到 quicX 网络库实践">
+      
+      
+        <meta name="author" content="ekko">
+      
+      
+      
+        <link rel="prev" href="../29_http3_mapping/">
+      
+      
+        <link rel="next" href="../31_http3_connection_lifecycle/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+    
+    
+      
+        <title>30. QPACK: 乱序世界里的头压缩引擎 - 深入解析 QUIC 与 HTTP/3</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#30-qpack" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-header__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            深入解析 QUIC 与 HTTP/3
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              30. QPACK: 乱序世界里的头压缩引擎
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-nav__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    深入解析 QUIC 与 HTTP/3
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    序言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷一: 基石时代 (基础设施)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷一: 基石时代 (基础设施)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    0. 卷一导读：在用户态重建网络世界的代价
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/01_memory_pool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. 内存的七巧板: 连接级内存池的设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/02_zero_copy_buffer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. 拷贝的艺术: 零拷贝 Buffer 的生存哲学
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/03_network_io_abstraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. 管道与枢纽: 网络 IO 的架构抽象
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/04_thread_model_and_lockfree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. 打破全局锁: One-Loop-Per-Thread 的无锁演进
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/05_async_timer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. 时空的刻度: 高效定时器与事件循环的融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二导读：打破四元组枷锁，重建连接的定义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/06_packet_and_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. 万物开端: QUIC Packet 解剖与连接世界地图
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/07_initial_keys_and_crypto_frame/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. 公开的秘密: Initial 密钥与 CRYPTO Frame 的起步逻辑
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/08_handshake_and_tls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. 破冰之握: 连接建立与 TLS 融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/09_zero_rtt_and_session_resume/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. 零等待的奇迹: 0-RTT 与会话恢复
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/10_address_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. 护城河: 地址验证与防放大攻击
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/11_connection_state_and_params/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. 连接的生死簿: 状态机与传输参数协商
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/12_connection_id_and_migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. 会飞的连接: Connection ID 与路径迁移
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    重构可靠传输：从包级确认到语义重传
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/13_why_quic_rebuilds_reliability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. 可靠性的代价: QUIC 为什么不再照搬 TCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/14_pn_space_and_ack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. ACK 的艺术: 序列号空间与确认边界
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/15_loss_detection_and_pto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. 消失与追踪: 丢包探测与 PTO 幽灵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/16_retransmission_semantics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. 重传的边界: 重发的不是 Packet, 而是语义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/17_packet_builder_and_encryption/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. 发包管线: PacketBuilder 与加密层调度
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/18_timer_and_lifecycle_war_story/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. 刺刀见红: 异步定时器与连接生命周期的暗战
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    拥塞控制：网络管道的物理学与控制论
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/19_rtt_and_cwnd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. 管道的容量: RTT 测量与拥塞窗口的第一原理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/20_reno_and_aimd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. 丢包即信号: Reno 与 AIMD 的经典控制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/21_cubic_and_high_bdp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. 立方的野心: Cubic 与高 BDP 网络的攻防
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/22_bbr_evolution_and_coexistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. 模型的革命: BBR 三代演进与算法共存
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/23_bbr_in_quicx/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    23. 速度的手术台: quicX 中拥塞控制的工程实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    多路复用与流控：并发的秩序与背压机制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/24_multiplexing_history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    24. 从队头阻塞到传输层并发: Stream 为什么是 QUIC 的另一半身体
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/25_stream_state_machine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    25. 流的诞生与终结: 发送与接收状态机
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/26_flow_control_windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    26. 双层流控与背压: 额度如何限制流，闸门关上后又如何打开
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/27_blocked_and_max_frames/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    27. quicX 的 Stream 管理: 从 pending 到 manager 的工程全景
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    抵达彼岸: HTTP/3 与乱序世界的契约
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../28_http3_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    28. 换一张地图: HTTP/3 的帧体系与控制面
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../29_http3_mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    29. 重新映射: 从 QUIC 流到请求与响应
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    30. QPACK: 乱序世界里的头压缩引擎
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    30. QPACK: 乱序世界里的头压缩引擎
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#301-hpack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        30.1 HPACK 在有序交付世界里的成立条件
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#302" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        30.2 乱序交付为什么会让头压缩变危险
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#303-qpack-required-insert-count-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        30.3 QPACK 的三重设计：分离指令流、Required Insert Count 与 Base
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="30.3 QPACK 的三重设计：分离指令流、Required Insert Count 与 Base">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#header-block" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        设计一：将动态表更新从 Header Block 中分离出来
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#required-insert-count" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        设计二：Required Insert Count——解码器的安全卫兵
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#base-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        设计三：Base Index——编码时刻的快照
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#304-huffmanqpack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        30.4 静态表、动态表与 Huffman：QPACK 的三张压缩牌
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="30.4 静态表、动态表与 Huffman：QPACK 的三张压缩牌">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#99" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        静态表：99 个预定义条目
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        动态表：连接期间的学习记忆
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#huffman" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Huffman 编码：字面量的最后一英里
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#header-block_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        七种 Header Block 表示
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#305-quicx-qpack-header-map-wire-bytes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        30.5 quicX 的 QPACK 编解码器：从 Header Map 到 Wire Bytes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="30.5 quicX 的 QPACK 编解码器：从 Header Map 到 Wire Bytes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        编码路径
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        解码路径
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        编码器指令的编解码
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        与请求/响应流的集成
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#306-qpack_blocked_streams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        30.6 阻塞的代价与权衡：QPACK_BLOCKED_STREAMS 的意义
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="30.6 阻塞的代价与权衡：QPACK_BLOCKED_STREAMS 的意义">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        阻塞的场景与代价
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qpack_blocked_streams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QPACK_BLOCKED_STREAMS：给阻塞设上限
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quicx-blockedregistry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quicX 的 BlockedRegistry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hpack-qpack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        从 HPACK 到 QPACK 的设计弧线
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../31_http3_connection_lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31. 一条 HTTP/3 连接的一生
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷七: 生产级修养
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷七: 生产级修养
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    生产级修养：从可用网络协议到工业级基础设施
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/32_metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32. 透明的眼睛: Metrics、日志上下文与可观测性基座
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/33_qlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33. 黑匣子: Qlog 可观测性实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/34_protocol_upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34. 通天塔的阶梯: HTTP 协议协商与版本升级
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/35_interop_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35. 试炼场: 与 Nginx / Quiche 的互联互通
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#301-hpack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        30.1 HPACK 在有序交付世界里的成立条件
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#302" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        30.2 乱序交付为什么会让头压缩变危险
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#303-qpack-required-insert-count-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        30.3 QPACK 的三重设计：分离指令流、Required Insert Count 与 Base
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="30.3 QPACK 的三重设计：分离指令流、Required Insert Count 与 Base">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#header-block" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        设计一：将动态表更新从 Header Block 中分离出来
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#required-insert-count" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        设计二：Required Insert Count——解码器的安全卫兵
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#base-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        设计三：Base Index——编码时刻的快照
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#304-huffmanqpack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        30.4 静态表、动态表与 Huffman：QPACK 的三张压缩牌
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="30.4 静态表、动态表与 Huffman：QPACK 的三张压缩牌">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#99" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        静态表：99 个预定义条目
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        动态表：连接期间的学习记忆
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#huffman" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Huffman 编码：字面量的最后一英里
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#header-block_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        七种 Header Block 表示
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#305-quicx-qpack-header-map-wire-bytes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        30.5 quicX 的 QPACK 编解码器：从 Header Map 到 Wire Bytes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="30.5 quicX 的 QPACK 编解码器：从 Header Map 到 Wire Bytes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        编码路径
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        解码路径
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        编码器指令的编解码
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        与请求/响应流的集成
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#306-qpack_blocked_streams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        30.6 阻塞的代价与权衡：QPACK_BLOCKED_STREAMS 的意义
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="30.6 阻塞的代价与权衡：QPACK_BLOCKED_STREAMS 的意义">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        阻塞的场景与代价
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qpack_blocked_streams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        QPACK_BLOCKED_STREAMS：给阻塞设上限
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quicx-blockedregistry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quicX 的 BlockedRegistry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hpack-qpack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        从 HPACK 到 QPACK 的设计弧线
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="30-qpack">30. QPACK：乱序世界里的头压缩引擎</h1>
+<p>HEADERS 帧携带的头部字段要被压缩——这一点没有争议。HTTP/2 用 HPACK 做到了极高的压缩率，靠的是编码端和解码端共享一张动态表，用索引号代替完整的名值对。但 HPACK 的正确性建立在一个隐含前提上：TCP 保证有序交付。QUIC 打破了这个前提——流与流之间可以乱序到达。在一个编码端和解码端可能看到不同操作顺序的世界里，如何让双方的压缩字典保持一致？QPACK 就是对这个问题的完整回答。</p>
+<hr />
+<h2 id="301-hpack">30.1 HPACK 在有序交付世界里的成立条件</h2>
+<p>HPACK（RFC 7541）是 HTTP/2 的头部压缩机制。它的核心思路是维护一张编码端和解码端共享的<strong>动态表</strong>：编码端把频繁出现的头部字段插入表中，之后只需发送一个索引号（可能只有 1 字节），接收端用同一个索引号从本地的动态表里取出完整的名值对。当 HTTP 头部在请求之间大量重复时——例如每个请求都带 <code>user-agent</code>、<code>accept-encoding</code>、<code>cookie</code>——压缩率可以非常高。</p>
+<p>这套机制的正确性建立在一个隐含前提上：<strong>编码端和解码端看到的操作序列必须完全一致</strong>。如果编码端先插入条目 A 再插入条目 B，解码端也必须按同样的顺序看到 A 和 B 的插入——否则同一个索引号在两端可能指向不同的条目。</p>
+<p>HTTP/2 天然满足这个前提。它跑在 TCP 之上，所有 HEADERS 帧在 TCP 字节流中有确定的先后顺序。即使多条 HTTP/2 流在逻辑上并发，它们的帧在 TCP 里仍然是单文件排列的。编码端按什么顺序发送插入指令，解码端就按什么顺序接收——动态表在两端永远同步。</p>
+<p>一句话总结：HPACK 的安全性建立在"TCP 保证有序"这个地基之上。地基一旦移走，上面的建筑就会坍塌。</p>
+<hr />
+<h2 id="302">30.2 乱序交付为什么会让头压缩变危险</h2>
+<p>QUIC 的 Stream 是独立交付的。Stream A 的数据可能比 Stream B 先到达解码端，即使 Stream B 的 HEADERS 帧在编码端先发送。这个特性是 QUIC 消除队头阻塞的核心优势——但它恰好摧毁了 HPACK 的安全假设。</p>
+<p>设想一个具体场景。编码端在 Stream 1 的 HEADERS 帧中把 <code>x-request-id: abc123</code> 插入动态表，得到索引 62。随后在 Stream 3 的 HEADERS 帧中引用索引 62。如果 Stream 3 的数据比 Stream 1 先到达解码端，解码端此刻的动态表里还没有索引 62 的条目。两种结果都很糟糕：</p>
+<ol>
+<li><strong>解码失败</strong>：引用了不存在的索引号，程序报错或崩溃。这是显式的错误，至少容易被发现。</li>
+<li><strong>索引错位</strong>：如果解码端的动态表因其他操作恰好在索引 62 存放了不同的条目，引用会指向错误的值。更危险的是，这种错误是<strong>静默的</strong>——后续所有引用都可能指向错误的条目，而双方都不知道。</li>
+</ol>
+<p>QUIC 不可能为了兼容 HPACK 而放弃乱序交付——那等于退回 TCP 的老路，丢掉队头阻塞消除这个核心价值。因此问题变成：如何设计一套新的头压缩机制，既保留动态表的压缩收益，又不依赖有序交付。</p>
+<hr />
+<h2 id="303-qpack-required-insert-count-base">30.3 QPACK 的三重设计：分离指令流、Required Insert Count 与 Base</h2>
+<p>QPACK（RFC 9204）用三个层层递进的设计解决乱序问题。</p>
+<h3 id="header-block">设计一：将动态表更新从 Header Block 中分离出来</h3>
+<p>HPACK 把动态表更新和头部引用混在同一个 HEADERS 帧中——编码端在帧里同时做"插入新条目"和"引用已有条目"两件事。QPACK 的第一个改变是<strong>把插入操作搬到独立的 Encoder Stream 上</strong>。</p>
+<p>Encoder Stream 是一条单向流（流类型 <code>0x02</code>），它有自己的偏移量和有序保证——同一条流上的字节按发送顺序到达。编码端通过 Encoder Stream 发送四种指令：</p>
+<table>
+<thead>
+<tr>
+<th>指令</th>
+<th>首字节模式</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Set Dynamic Table Capacity</td>
+<td><code>001xxxxx</code>（5-bit 前缀）</td>
+<td>更新动态表容量上限</td>
+</tr>
+<tr>
+<td>Insert With Name Reference</td>
+<td><code>1Txxxxxx</code>（6-bit 前缀，T=静态/动态）</td>
+<td>用已有条目的名称插入新条目</td>
+</tr>
+<tr>
+<td>Insert Without Name Reference</td>
+<td><code>01xxxxxx</code>（6-bit 前缀）</td>
+<td>用字面量名称和值插入新条目</td>
+</tr>
+<tr>
+<td>Duplicate</td>
+<td><code>000xxxxx</code>（5-bit 前缀）</td>
+<td>复制一个即将被驱逐的条目到表头</td>
+</tr>
+</tbody>
+</table>
+<p>Header Block（在 HEADERS 帧中）只做<strong>引用</strong>，不做插入。引用一个动态表条目的前提是：该条目已经通过 Encoder Stream 的插入指令到达了解码端。如果还没到达——不是解码错误，而是等它到了再解码。</p>
+<p>解码端通过 <strong>Decoder Stream</strong>（流类型 <code>0x03</code>）向编码端反馈三种信息：</p>
+<table>
+<thead>
+<tr>
+<th>指令</th>
+<th>首字节模式</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Section Acknowledgment</td>
+<td><code>1xxxxxxx</code>（7-bit 前缀）</td>
+<td>确认某个 Header Block 已成功解码</td>
+</tr>
+<tr>
+<td>Stream Cancellation</td>
+<td><code>01xxxxxx</code>（6-bit 前缀）</td>
+<td>通知编码端某条流被取消</td>
+</tr>
+<tr>
+<td>Insert Count Increment</td>
+<td><code>00xxxxxx</code>（6-bit 前缀）</td>
+<td>告知编码端解码端已处理了更多插入指令</td>
+</tr>
+</tbody>
+</table>
+<p>反馈的意义在于：编码端可以根据反馈判断哪些动态表条目已被对端确认，从而安全地驱逐旧条目腾出空间。</p>
+<h3 id="required-insert-count">设计二：Required Insert Count——解码器的安全卫兵</h3>
+<p>把插入操作分离到 Encoder Stream 上解决了"操作顺序"问题，但引入了新问题：当一个 Header Block 到达解码端时，它引用的动态表条目可能还在 Encoder Stream 的路上。QPACK 用 <strong>Required Insert Count（RIC）</strong> 解决这个时序问题。</p>
+<p>每个 Header Block 的前缀中携带一个 RIC：解码这个 Header Block 需要动态表中<strong>至少</strong>已经收到这么多条插入指令。如果解码端的动态表还没有收到足够的插入指令，它不会尝试解码——而是<strong>阻塞</strong>这个 Header Block，等待 Encoder Stream 的数据到达后再继续。</p>
+<p>阻塞和错误的区别是关键的：阻塞是可恢复的（等数据到了就能继续），错误是不可恢复的。QPACK 用阻塞替代了错误，把一个正确性问题转化为了延迟问题。</p>
+<p>RIC 的线上编码使用 wrap-around 算法减少字节开销（RFC 9204 §4.5.1）。编码端的公式：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>MaxEntries = floor(MaxTableCapacity / 32)
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>if ReqInsertCount == 0:
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    EncodedInsertCount = 0
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>else:
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    EncodedInsertCount = (ReqInsertCount mod (2 * MaxEntries)) + 1
+</span></code></pre></div>
+<p>解码端需要从 <code>EncodedInsertCount</code> 和自己已知的 <code>TotalNumberOfInserts</code> 反推出真实的 RIC：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>FullRange = 2 * MaxEntries
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>if EncodedInsertCount == 0:
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    ReqInsertCount = 0
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>else:
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    MaxValue = TotalNumberOfInserts + MaxEntries
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    MaxWrapped = floor(MaxValue / FullRange) * FullRange
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    ReqInsertCount = MaxWrapped + EncodedInsertCount - 1
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    if ReqInsertCount &gt; MaxValue:
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        ReqInsertCount -= FullRange
+</span></code></pre></div>
+<p>为什么要这么复杂？因为 RIC 是单调递增的，直接编码会越来越大。取模编码把值限制在 <code>[0, 2*MaxEntries)</code> 范围内，通常只需 1-2 字节。解码端利用自己已知的插入总数来消除歧义。</p>
+<h3 id="base-index">设计三：Base Index——编码时刻的快照</h3>
+<p>Header Block 前缀中还携带一个 <strong>Base</strong>：编码这个 Header Block 时动态表的参考基准。动态表引用使用<strong>相对于 Base 的索引</strong>而非绝对索引，这样 Header Block 的引用不受后续插入的影响。</p>
+<p>对于编码时已经存在的条目，使用普通的相对索引：<code>relative_index = base - 1 - absolute_index</code>。对于编码时同步插入的条目（绝对索引 ≥ base），使用 Post-Base 索引：<code>post_base_index = absolute_index - base</code>。Base 相对于 RIC 编码，只需一个符号位（S）和一个 Delta 值：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>if S == 0:  Base = ReqInsertCount + DeltaBase
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>if S == 1:  Base = ReqInsertCount - DeltaBase - 1
+</span></code></pre></div>
+<p>三个设计叠加的效果是：Encoder Stream 保证插入操作有序到达，RIC 保证 Header Block 只在条件满足时才被解码，Base 保证引用不受后续操作干扰。一个"乱序世界里的安全字典"就这样被构建出来了。</p>
+<hr />
+<h2 id="304-huffmanqpack">30.4 静态表、动态表与 Huffman：QPACK 的三张压缩牌</h2>
+<p>QPACK 的压缩能力来自三种手段：静态表负责高频词汇，动态表负责连接内重复，Huffman 编码负责字面量的最后一英里压缩。</p>
+<h3 id="99">静态表：99 个预定义条目</h3>
+<p>QPACK 的静态表（RFC 9204 Appendix A）包含 99 个预定义的名值对，覆盖了 HTTP/3 流量中出现频率最高的头部字段。与 HPACK 的 61 个条目相比，QPACK 增加了更多实际流量中常见的值：</p>
+<table>
+<thead>
+<tr>
+<th>索引范围</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td><code>:authority</code>（空值）</td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>:path</code> = <code>/</code></td>
+</tr>
+<tr>
+<td>15–21</td>
+<td><code>:method</code> = CONNECT / DELETE / GET / HEAD / OPTIONS / POST / PUT</td>
+</tr>
+<tr>
+<td>22–23</td>
+<td><code>:scheme</code> = http / https</td>
+</tr>
+<tr>
+<td>24–28, 63–71</td>
+<td><code>:status</code> = 103 / 200 / 304 / 404 / 503 / 100 / 204 / 206 / 302 / 400 / 403 / 421 / 425 / 500</td>
+</tr>
+<tr>
+<td>44–54</td>
+<td><code>content-type</code> 的多种 MIME 类型</td>
+</tr>
+<tr>
+<td>56–58</td>
+<td><code>strict-transport-security</code> 的常见策略</td>
+</tr>
+</tbody>
+</table>
+<p>静态表的索引从 0 开始（HPACK 从 1 开始），全部内容在连接建立前就已确定，两端不需要任何同步。当一个 Header Block 引用静态表时，编码为 <code>11xxxxxx</code>（Indexed — Static），只需 1-2 字节即可表示一个完整的头部字段。</p>
+<p>quicX 的 <code>StaticTable</code> 用 Singleton 模式实现，内部维护三套查找结构：<code>headeritem_vec_</code>（按索引顺序的 <code>vector&lt;HeaderItem&gt;</code>）、<code>headeritem_index_map_</code>（name+value → 索引的哈希表）、<code>headeritem_name_map_</code>（name → 最小索引的哈希表）。三种查找方式分别服务于按索引取回（解码）、精确匹配（编码优先路径）和仅名称匹配（退化路径）。</p>
+<h3 id="_1">动态表：连接期间的学习记忆</h3>
+<p>静态表覆盖的是全局高频词汇，每条连接特有的高频头部——如特定的 Cookie 值、自定义的 <code>x-request-id</code>——需要动态表来压缩。</p>
+<p>quicX 的 <code>DynamicTable</code> 用 <code>std::deque&lt;HeaderItem&gt;</code> 实现。新条目 <code>push_front</code>（索引 0），旧条目从尾部驱逐。每个条目的大小按 RFC 7541 §4.1 的公式计算：<code>name.length() + value.length() + 32</code>（32 字节是估算的内存管理开销）。</p>
+<p>插入新条目时（<code>AddHeaderItem</code>），如果动态表空间不足，先从尾部循环驱逐最旧的条目（<code>EvictEntries</code>），再把新条目 <code>push_front</code>。由于 <code>push_front</code> 使所有旧条目的相对位置后移一位，<code>headeritem_index_map_</code> 中所有现有索引需要 +1——这是一个 O(n) 操作。对于小动态表（典型配置 128-256 个条目）代价可以接受，大动态表下则有性能隐患。</p>
+<p><code>DuplicateEntry</code> 实现 RFC 9204 §2.2.1 的 Duplicate 指令：把一个即将被驱逐的条目复制到表头，延长它的生命周期。这在高频条目快要被淘汰时很有用——复制比重新插入更省带宽，因为 Duplicate 指令只需一个索引号。</p>
+<p><code>GetInsertCount()</code> 返回自表创建以来的总插入次数（<code>total_insert_count_</code>），这个值单调递增，用于 RIC 的 wrap-around 编解码。</p>
+<h3 id="huffman">Huffman 编码：字面量的最后一英里</h3>
+<p>当一个头部字段既不在静态表也不在动态表中时，名称和值需要以字面量形式传输。Huffman 编码可以把常见的 ASCII 字符（a-z、0-9）从 8 bit 压缩到 5-6 bit，对纯文本头部通常能节省 20%-30% 的字节。</p>
+<p>quicX 的 <code>HuffmanEncoder</code> 也是 Singleton 模式，使用 RFC 7541 Appendix B 的静态码表（257 个条目：256 个 ASCII 字符 + EOS）。编码前先调用 <code>ShouldHuffmanEncode(input)</code> 逐字符累加编码后的比特数——只有编码后更短时才使用 Huffman，避免对已经很紧凑的二进制值做无效编码。</p>
+<p>解码端不能逐 bit 遍历 Huffman 树（太慢），quicX 使用<strong>预计算的 256×16 状态转移表</strong>（<code>HuffmanTable</code>）。每个状态处理 4 bit（一个 nibble），每字节只需两次查表（高 4 bit + 低 4 bit）。状态转移表的每个节点包含四个字段：<code>next</code>（下一状态）、<code>emit</code>（是否输出字符）、<code>symbol</code>（输出的字符）、<code>ending</code>（是否为合法结束位置）。整张表占约 16 KB，以空间换时间，实现 O(n) 的线性解码。</p>
+<h3 id="header-block_1">七种 Header Block 表示</h3>
+<p>三种压缩手段在编码时通过七种表示类型混合使用：</p>
+<table>
+<thead>
+<tr>
+<th>首字节模式</th>
+<th>含义</th>
+<th>前缀长度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>11xxxxxx</code></td>
+<td>Indexed — Static（静态表精确匹配）</td>
+<td>6 bit</td>
+</tr>
+<tr>
+<td><code>10xxxxxx</code></td>
+<td>Indexed — Dynamic（动态表精确匹配）</td>
+<td>6 bit</td>
+</tr>
+<tr>
+<td><code>0101xxxx</code></td>
+<td>Literal Name Ref — Static（静态表名称匹配 + 字面量值）</td>
+<td>4 bit</td>
+</tr>
+<tr>
+<td><code>0100xxxx</code></td>
+<td>Literal Name Ref — Dynamic（动态表名称匹配 + 字面量值）</td>
+<td>4 bit</td>
+</tr>
+<tr>
+<td><code>001xxxxx</code></td>
+<td>Literal — No Name Ref（字面量名称 + 字面量值）</td>
+<td>3 bit</td>
+</tr>
+<tr>
+<td><code>0001xxxx</code></td>
+<td>Post-Base Indexed（Post-Base 动态表精确匹配）</td>
+<td>4 bit</td>
+</tr>
+<tr>
+<td><code>0000xxxx</code></td>
+<td>Post-Base Literal Name Ref（Post-Base 名称匹配 + 字面量值）</td>
+<td>4 bit</td>
+</tr>
+</tbody>
+</table>
+<p>编码端的选择策略是优先级递减：<strong>静态表精确匹配 &gt; 静态表名称匹配 &gt; 动态表精确匹配 &gt; 动态表名称匹配 &gt; 字面量</strong>。匹配程度越高，编码后越短。</p>
+<hr />
+<h2 id="305-quicx-qpack-header-map-wire-bytes">30.5 quicX 的 QPACK 编解码器：从 Header Map 到 Wire Bytes</h2>
+<p>quicX 的 QPACK 核心是 <code>QpackEncoder</code> 类（824 行），它同时承担编码和解码两个职责——一个类兼任两个角色，违反单一职责原则，但简化了动态表的共享。</p>
+<h3 id="_2">编码路径</h3>
+<p><code>Encode()</code> 接收一组 HTTP 头部字段（<code>unordered_map&lt;string, string&gt;</code>），输出 QPACK 编码后的字节流。完整流程分为三步：</p>
+<p><strong>第一步：写 Header Block 前缀</strong>。调用 <code>WriteHeaderPrefix()</code> 写入 RIC 和 Delta Base。当前实现把 RIC 设为 <code>dynamic_table_.GetInsertCount()</code>（全部插入数），Base 设为 RIC——这意味着不使用 Post-Base 引用。这个策略简化了实现，但可能导致不必要的阻塞：即使 Header Block 只引用了静态表条目，解码端仍然要等待动态表追上 RIC 才能开始解码。</p>
+<p><strong>第二步：伪头部优先编码</strong>。按 <code>:method</code> → <code>:scheme</code> → <code>:authority</code> → <code>:path</code> → <code>:status</code> 的顺序先处理伪头部，再处理普通头部。这与 RFC 9114 §4.3 的要求一致——所有伪头部必须出现在 Header Block 的最前面。</p>
+<p><strong>第三步：逐个头部字段选择最优编码</strong>。对每个字段，按优先级递减尝试：</p>
+<ol>
+<li>静态表精确匹配（name + value 都命中）→ <code>Indexed — Static</code></li>
+<li>静态表名称匹配（只有 name 命中）→ <code>Literal Name Ref — Static</code> + 编码 value</li>
+<li>动态表精确匹配 → <code>Indexed — Dynamic</code>，使用相对索引 <code>base - 1 - absolute_index</code></li>
+<li>动态表未命中但启用动态表 → 插入新条目 + 通过 <code>instruction_sender_</code> 回调发送 Encoder Instruction</li>
+<li>最终兜底 → <code>Literal — No Name Ref</code>，名称和值都以字面量形式编码</li>
+</ol>
+<p>值的编码（<code>EncodeString</code>）会先调用 <code>HuffmanEncoder::ShouldHuffmanEncode()</code> 判断是否使用 Huffman，然后以 <code>[H|长度(7-bit 前缀)] [数据]</code> 的格式写入。</p>
+<h3 id="_3">解码路径</h3>
+<p><code>Decode()</code> 是编码的逆过程。</p>
+<p><strong>第一步：读 Header Block 前缀</strong>。<code>ReadHeaderPrefix()</code> 从前缀中解码 RIC 和 Base。解码 RIC 需要用到 wrap-around 反算逻辑——结合解码端已知的 <code>TotalNumberOfInserts</code> 和 <code>MaxEntries</code> 来消除取模歧义。</p>
+<p><strong>第二步：阻塞检查</strong>。如果 <code>required_insert_count &gt; dynamic_table_.GetInsertCount()</code>，说明 Encoder Stream 的数据还没到齐，直接返回失败。上层的 <code>ReqRespBaseStream</code> 会把这次解码操作封装为闭包，注册到 <code>BlockedRegistry</code> 中等待唤醒。</p>
+<p><strong>第三步：逐字段解码</strong>。循环读取每个字节的高位比特模式，分发到七种表示类型的解码分支。动态表引用需要做索引转换：普通引用用 <code>absolute_index = base - 1 - relative_index</code>，Post-Base 引用用 <code>absolute_index = base + post_base_index</code>。</p>
+<h3 id="_4">编码器指令的编解码</h3>
+<p><code>EncodeEncoderInstructions()</code> 将编码端的动态表操作（插入、复制、设容量）序列化为 Encoder Stream 字节。<code>DecodeEncoderInstructions()</code> 在接收端解析这些指令，根据首字节比特模式分发到四种指令的处理逻辑，执行对应的动态表操作（<code>AddHeaderItem</code>、<code>DuplicateEntry</code>、<code>UpdateMaxTableSize</code>）。</p>
+<h3 id="_5">与请求/响应流的集成</h3>
+<p><code>ReqRespBaseStream</code> 是请求/响应流的基类，也是 QPACK 的实际调用者。发送头部时：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>HTTP headers → QpackEncoder::Encode() → 编码后字节 → HeadersFrame → QUIC 流
+</span></code></pre></div>
+<p>接收头部时：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>QUIC 流 → FrameDecoder → HeadersFrame → QpackEncoder::Decode() → HTTP headers
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>                                            ↓ (RIC 不满足)
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>                                    BlockedRegistry::Add(key, retry_closure)
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>                                            ↓ (Encoder Stream 数据到达)
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>                                    NotifyAll() → retry → 成功 → Section Ack
+</span></code></pre></div>
+<p><code>header_block_key_</code> 使用 <code>(stream_id &lt;&lt; 32) | section_number</code> 编码，作为 64-bit 唯一标识符在 <code>BlockedRegistry</code> 和 Section Ack 中传递。</p>
+<hr />
+<h2 id="306-qpack_blocked_streams">30.6 阻塞的代价与权衡：QPACK_BLOCKED_STREAMS 的意义</h2>
+<p>QPACK 用"阻塞"替代了"错误"，把正确性问题转化为延迟问题。但阻塞本身也有代价。</p>
+<h3 id="_6">阻塞的场景与代价</h3>
+<p>当一个 Header Block 引用了动态表条目，但 Encoder Stream 的插入指令还没到达解码端时，这个 Header Block 的解码被挂起。挂起意味着这条请求流被阻塞——无法处理请求头、无法路由到 Handler、无法开始处理业务逻辑。如果高并发场景下大量流同时被阻塞，HTTP/3 宣称的"消除队头阻塞"优势就会被 QPACK 的阻塞行为部分抵消。</p>
+<p>这里有一个讽刺的对称性：<strong>HPACK 永远不会阻塞任何流（因为 TCP 保证有序），但整条 TCP 连接会因为一个包的丢失而队头阻塞所有流；QPACK 可能阻塞个别流（等待 Encoder Stream 数据），但其他流完全不受影响。</strong> QPACK 用"可控的少量阻塞"换来了"消除全局队头阻塞"——这是一笔值得做的交易。</p>
+<h3 id="qpack_blocked_streams">QPACK_BLOCKED_STREAMS：给阻塞设上限</h3>
+<p>为了防止阻塞失控，QPACK 引入了 <code>QPACK_BLOCKED_STREAMS</code> 参数（通过 SETTINGS 帧协商）。这个参数规定了同一时刻最多允许多少条流处于阻塞状态。编码端在编码前必须检查：如果当前已阻塞的流数量已达上限，就不能再使用可能导致阻塞的动态表引用——只能退化为静态表引用或字面量编码。</p>
+<p>两个极端策略揭示了设计空间的边界：</p>
+<ul>
+<li><strong>永不使用动态表</strong>（<code>QPACK_MAX_TABLE_CAPACITY = 0</code>）：不会阻塞任何流，但完全放弃动态表的压缩收益。退化为"静态表 + Huffman"模式。</li>
+<li><strong>激进使用动态表</strong>（大容量 + 高阻塞上限）：最大化压缩收益，但可能导致大量流同时被阻塞，在网络抖动时加剧延迟。</li>
+</ul>
+<p>实际部署中大多数实现选择中间路线——小到中等容量的动态表加上适度的阻塞上限，在压缩率和延迟之间取平衡。</p>
+<h3 id="quicx-blockedregistry">quicX 的 BlockedRegistry</h3>
+<p>quicX 用 <code>QpackBlockedRegistry</code> 管理阻塞状态。它的核心是一张 pending 表（<code>unordered_map&lt;uint64_t, function&lt;void()&gt;&gt;</code>），key 是 <code>header_block_key_</code>，value 是解码操作的重试闭包。</p>
+<ul>
+<li><code>SetMaxBlockedStreams(n)</code>：从 SETTINGS 参数初始化上限</li>
+<li><code>CanAddBlocked()</code>：编码前检查 <code>pending_.size() &lt; max_blocked_streams_</code></li>
+<li><code>Add(key, retry_closure)</code>：注册一个阻塞的解码操作</li>
+<li><code>NotifyAll()</code>：Encoder Stream 数据到达并更新动态表后，批量唤醒所有被阻塞的解码操作</li>
+<li><code>Ack(key)</code>：Section Ack 到达后移除对应的阻塞记录</li>
+<li><code>Remove(key)</code>：Stream Cancellation 到达后移除记录</li>
+</ul>
+<p><code>NotifyAll()</code> 的语义是"盲唤醒"——它不检查每个闭包的 RIC 是否已满足，而是让所有闭包重新尝试解码。如果某个 Header Block 的 RIC 仍然不满足，它会再次注册到 pending 表中。这个设计牺牲了一点效率（可能有无效的重试），但极大简化了实现——不需要为每个闭包维护精确的 RIC 状态。</p>
+<h3 id="hpack-qpack">从 HPACK 到 QPACK 的设计弧线</h3>
+<p>回望这条演进路径，核心思想很清晰：HPACK 把所有赌注压在传输层的有序性上——一旦传输层不再保证有序，赌注就输了。QPACK 的回应不是"重新发明有序性"，而是承认乱序是现实，在乱序的世界里用分离指令流、RIC 安全卫兵和 Base 快照三层机制重建字典一致性。它不追求"永远不阻塞"，而是接受"偶尔阻塞"作为代价，用 <code>QPACK_BLOCKED_STREAMS</code> 把代价控制在可接受的范围内。</p>
+<p>这不仅仅是一个头压缩算法的迭代，更是一个"从依赖有序到拥抱乱序"的协议设计范式转变。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="页脚" >
+        
+          
+          <a href="../29_http3_mapping/" class="md-footer__link md-footer__link--prev" aria-label="上一页: 29. 重新映射: 从 QUIC 流到请求与响应">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                上一页
+              </span>
+              <div class="md-ellipsis">
+                29. 重新映射: 从 QUIC 流到请求与响应
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../31_http3_connection_lifecycle/" class="md-footer__link md-footer__link--next" aria-label="下一页: 31. 一条 HTTP/3 连接的一生">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                下一页
+              </span>
+              <div class="md-ellipsis">
+                31. 一条 HTTP/3 连接的一生
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.indexes", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

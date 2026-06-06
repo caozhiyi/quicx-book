@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 2400" width="1600" height="2400" font-family="'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+  <defs>
+    <linearGradient id="coverBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#12091f"/>
+      <stop offset="44%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <radialGradient id="violetGlow" cx="25%" cy="18%" r="58%">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.30"/>
+      <stop offset="48%" stop-color="#7c3aed" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orangeGlow" cx="78%" cy="76%" r="58%">
+      <stop offset="0%" stop-color="#fb7185" stop-opacity="0.24"/>
+      <stop offset="52%" stop-color="#f97316" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ede9fe"/>
+      <stop offset="50%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#ffe4e6"/>
+    </linearGradient>
+    <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0"/>
+      <stop offset="18%" stop-color="#a78bfa" stop-opacity="0.76"/>
+      <stop offset="58%" stop-color="#fb7185" stop-opacity="0.76"/>
+      <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="grid" width="72" height="72" patternUnits="userSpaceOnUse">
+      <path d="M 72 0 L 0 0 0 72" fill="none" stroke="#94a3b8" stroke-width="1" opacity="0.08"/>
+    </pattern>
+    <pattern id="microGrid" width="18" height="18" patternUnits="userSpaceOnUse">
+      <path d="M 18 0 L 0 0 0 18" fill="none" stroke="#64748b" stroke-width="0.7" opacity="0.07"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M2 2 L10 6 L2 10 Z" fill="#c4b5fd" opacity="0.72"/>
+    </marker>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="24" stdDeviation="30" flood-color="#000000" flood-opacity="0.34"/></filter>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+
+  <rect width="1600" height="2400" fill="url(#coverBg)"/>
+  <rect width="1600" height="2400" fill="url(#violetGlow)"/>
+  <rect width="1600" height="2400" fill="url(#orangeGlow)"/>
+  <rect width="1600" height="2400" fill="url(#grid)"/>
+  <rect width="1600" height="2400" fill="url(#microGrid)" opacity="0.55"/>
+
+  <g opacity="0.38">
+    <path d="M70 1855 C350 1705, 585 1790, 840 1608 C1052 1457, 1230 1442, 1530 1284" fill="none" stroke="#a78bfa" stroke-width="2" stroke-opacity="0.28"/>
+    <path d="M112 1970 C405 1808, 650 1882, 928 1662 C1142 1492, 1315 1512, 1534 1398" fill="none" stroke="#fb7185" stroke-width="2" stroke-opacity="0.22"/>
+    <path d="M92 2075 C390 1915, 665 2000, 972 1742 C1200 1550, 1390 1590, 1540 1480" fill="none" stroke="#f97316" stroke-width="2" stroke-opacity="0.18"/>
+  </g>
+
+  <g transform="translate(140 132)">
+    <text x="0" y="0" fill="#c4b5fd" font-family="'SFMono-Regular', 'Cascadia Code', 'Menlo', monospace" font-size="30" font-weight="700" letter-spacing="5">QUIC · HTTP/3 SYSTEMS</text>
+    <line x1="0" y1="48" x2="1320" y2="48" stroke="url(#lineGrad)" stroke-width="3"/>
+    <text x="1320" y="0" text-anchor="end" fill="#94a3b8" font-family="'SFMono-Regular', 'Cascadia Code', 'Menlo', monospace" font-size="24" letter-spacing="3">PROTOCOL TO PRACTICE</text>
+  </g>
+
+  <g transform="translate(140 392)">
+    <text x="0" y="0" fill="url(#titleGrad)" font-size="134" font-weight="850" letter-spacing="-7">深入解析</text>
+    <text x="0" y="172" fill="url(#titleGrad)" font-size="168" font-weight="900" letter-spacing="-8">QUIC 与 HTTP/3</text>
+    <rect x="4" y="232" width="890" height="8" rx="4" fill="url(#lineGrad)"/>
+    <text x="0" y="336" fill="#cbd5e1" font-size="52" font-weight="500" letter-spacing="1.6">从协议设计到 quicX 网络库实践</text>
+  </g>
+
+  <g transform="translate(86 858)" filter="url(#softShadow)">
+    <ellipse cx="708" cy="420" rx="670" ry="340" fill="#7c3aed" fill-opacity="0.050"/>
+    <ellipse cx="820" cy="392" rx="550" ry="270" fill="#67e8f9" fill-opacity="0.032"/>
+    <ellipse cx="610" cy="486" rx="500" ry="230" fill="#fb7185" fill-opacity="0.030"/>
+
+    <g opacity="0.80" filter="url(#glow)">
+      <path d="M112 380 C282 138, 486 162, 642 314 C734 404, 792 482, 912 352 C1078 172, 1262 128, 1382 326" fill="none" stroke="#a78bfa" stroke-width="96" stroke-linecap="round" stroke-opacity="0.070"/>
+      <path d="M112 380 C282 138, 486 162, 642 314 C734 404, 792 482, 912 352 C1078 172, 1262 128, 1382 326" fill="none" stroke="#67e8f9" stroke-width="42" stroke-linecap="round" stroke-opacity="0.050"/>
+      <path d="M94 444 C270 668, 488 626, 644 474 C734 386, 786 292, 916 426 C1070 586, 1268 596, 1398 410" fill="none" stroke="#fb7185" stroke-width="88" stroke-linecap="round" stroke-opacity="0.055"/>
+    </g>
+
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="198" cy="404" rx="190" ry="292" transform="rotate(-17 198 404)" fill="#020617" fill-opacity="0.105" stroke="#c4b5fd" stroke-width="2.3" stroke-opacity="0.42"/>
+      <ellipse cx="1264" cy="356" rx="224" ry="284" transform="rotate(12 1264 356)" fill="#020617" fill-opacity="0.090" stroke="#fda4af" stroke-width="2.1" stroke-opacity="0.34"/>
+
+      <path d="M102 210 C256 72, 476 116, 636 304 C724 408, 790 484, 920 340 C1084 158, 1284 108, 1398 260" stroke="#c4b5fd" stroke-width="3.0" stroke-opacity="0.70"/>
+      <path d="M84 566 C270 724, 500 646, 642 462 C730 348, 794 274, 924 430 C1080 616, 1284 628, 1410 448" stroke="#fda4af" stroke-width="2.8" stroke-opacity="0.58"/>
+      <path d="M126 284 C294 152, 488 176, 642 324 C732 410, 790 462, 914 346 C1068 202, 1264 172, 1370 300" stroke="#93c5fd" stroke-width="1.8" stroke-opacity="0.44"/>
+      <path d="M104 492 C286 636, 492 588, 646 448 C738 364, 794 318, 920 426 C1076 560, 1264 568, 1392 402" stroke="#86efac" stroke-width="1.7" stroke-opacity="0.34"/>
+    </g>
+
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.54">
+      <path d="M146 250 C306 160, 476 190, 630 328 C724 412, 784 444, 904 350 C1058 230, 1238 204, 1356 314" stroke="#c4b5fd" stroke-width="1.6"/>
+      <path d="M118 332 C300 236, 482 248, 632 354 C724 420, 786 420, 908 360 C1074 278, 1242 268, 1376 350" stroke="#67e8f9" stroke-width="1.5" stroke-opacity="0.84"/>
+      <path d="M104 414 C284 354, 478 344, 636 386 C730 412, 794 384, 918 382 C1086 380, 1264 388, 1392 382" stroke="#a78bfa" stroke-width="1.45" stroke-opacity="0.72"/>
+      <path d="M118 500 C292 574, 488 536, 646 426 C738 362, 800 350, 924 410 C1082 486, 1258 506, 1378 424" stroke="#fb7185" stroke-width="1.55" stroke-opacity="0.78"/>
+      <path d="M160 574 C326 650, 512 590, 652 454 C742 366, 806 320, 934 442 C1088 588, 1260 600, 1370 474" stroke="#fdba74" stroke-width="1.35" stroke-opacity="0.54"/>
+    </g>
+
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.36">
+      <path d="M156 188 C228 294, 224 484, 124 598" stroke="#c4b5fd" stroke-width="1.55"/>
+      <path d="M282 144 C346 274, 340 536, 230 660" stroke="#93c5fd" stroke-width="1.35"/>
+      <path d="M424 154 C480 282, 468 528, 344 640" stroke="#a78bfa" stroke-width="1.25"/>
+      <path d="M560 224 C594 318, 592 466, 512 560" stroke="#67e8f9" stroke-width="1.15"/>
+      <path d="M670 318 C702 362, 704 428, 652 476" stroke="#f8fafc" stroke-width="1.05" stroke-opacity="0.55"/>
+      <path d="M780 460 C748 400, 762 338, 828 298" stroke="#f8fafc" stroke-width="1.05" stroke-opacity="0.50"/>
+      <path d="M922 338 C994 420, 1012 520, 948 618" stroke="#fb7185" stroke-width="1.15"/>
+      <path d="M1058 214 C1156 326, 1178 518, 1080 634" stroke="#fdba74" stroke-width="1.25"/>
+      <path d="M1210 154 C1330 284, 1360 500, 1244 642" stroke="#fda4af" stroke-width="1.35"/>
+      <path d="M1342 206 C1452 330, 1460 486, 1358 576" stroke="#c4b5fd" stroke-width="1.45"/>
+    </g>
+
+    <g filter="url(#glow)">
+      <path d="M168 384 C294 312, 454 310, 614 360" fill="none" stroke="#c4b5fd" stroke-width="2.2" stroke-opacity="0.26" stroke-linecap="round"/>
+      <path d="M370 496 C516 456, 614 414, 704 380" fill="none" stroke="#67e8f9" stroke-width="2" stroke-opacity="0.24" stroke-linecap="round"/>
+      <path d="M774 350 C890 312, 1018 316, 1166 368" fill="none" stroke="#fda4af" stroke-width="2.1" stroke-opacity="0.25" stroke-linecap="round"/>
+      <path d="M900 440 C1040 510, 1188 506, 1328 426" fill="none" stroke="#86efac" stroke-width="1.8" stroke-opacity="0.18" stroke-linecap="round"/>
+
+      <circle cx="148" cy="392" r="6.0" fill="#f8fafc" fill-opacity="0.92"/>
+      <circle cx="204" cy="352" r="3.5" fill="#c4b5fd" fill-opacity="0.78"/>
+      <circle cx="278" cy="322" r="4.4" fill="#67e8f9" fill-opacity="0.82"/>
+      <circle cx="354" cy="318" r="2.9" fill="#fda4af" fill-opacity="0.68"/>
+      <circle cx="442" cy="334" r="5.2" fill="#f8fafc" fill-opacity="0.88"/>
+      <circle cx="548" cy="356" r="3.4" fill="#93c5fd" fill-opacity="0.76"/>
+      <circle cx="636" cy="384" r="7.2" fill="#f8fafc" fill-opacity="0.95"/>
+      <circle cx="704" cy="408" r="2.6" fill="#c4b5fd" fill-opacity="0.64"/>
+      <circle cx="776" cy="370" r="5.6" fill="#67e8f9" fill-opacity="0.86"/>
+      <circle cx="858" cy="348" r="3.1" fill="#fda4af" fill-opacity="0.72"/>
+      <circle cx="946" cy="354" r="6.4" fill="#f8fafc" fill-opacity="0.90"/>
+      <circle cx="1042" cy="378" r="4.0" fill="#fdba74" fill-opacity="0.78"/>
+      <circle cx="1130" cy="394" r="5.0" fill="#c4b5fd" fill-opacity="0.80"/>
+      <circle cx="1218" cy="382" r="3.0" fill="#86efac" fill-opacity="0.72"/>
+      <circle cx="1310" cy="354" r="6.8" fill="#f8fafc" fill-opacity="0.92"/>
+
+      <circle cx="244" cy="500" r="2.7" fill="#fb7185" fill-opacity="0.56"/>
+      <circle cx="326" cy="542" r="4.2" fill="#fdba74" fill-opacity="0.66"/>
+      <circle cx="438" cy="522" r="3.1" fill="#86efac" fill-opacity="0.62"/>
+      <circle cx="566" cy="462" r="4.8" fill="#f8fafc" fill-opacity="0.80"/>
+      <circle cx="846" cy="444" r="3.4" fill="#fda4af" fill-opacity="0.65"/>
+      <circle cx="990" cy="502" r="4.4" fill="#67e8f9" fill-opacity="0.72"/>
+      <circle cx="1126" cy="514" r="2.8" fill="#c4b5fd" fill-opacity="0.60"/>
+      <circle cx="1248" cy="474" r="4.8" fill="#f8fafc" fill-opacity="0.82"/>
+    </g>
+
+    <g opacity="0.28" filter="url(#glow)">
+      <circle cx="690" cy="394" r="88" fill="none" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="12 18"/>
+      <circle cx="758" cy="394" r="62" fill="none" stroke="#67e8f9" stroke-width="1.2" stroke-dasharray="8 16"/>
+      <path d="M608 330 C684 280, 782 292, 848 358" fill="none" stroke="#f8fafc" stroke-width="1.2" stroke-opacity="0.34"/>
+      <path d="M610 470 C692 526, 804 508, 864 430" fill="none" stroke="#fb7185" stroke-width="1.3" stroke-opacity="0.32"/>
+    </g>
+  </g>
+
+  <g transform="translate(140 1852)">
+    <text x="0" y="0" fill="#e2e8f0" font-size="34" font-weight="800" letter-spacing="1.5">从传输语义到工程实践</text>
+    <text x="0" y="62" fill="#94a3b8" font-size="28" letter-spacing="1.2">把协议约束落到代码结构里</text>
+  </g>
+
+  <g transform="translate(140 2200)">
+    <line x1="0" y1="0" x2="1320" y2="0" stroke="url(#lineGrad)" stroke-width="3"/>
+    <text x="0" y="78" fill="#f8fafc" font-size="42" font-weight="800" letter-spacing="1.5">caozhiyi</text>
+    <text x="1320" y="78" text-anchor="end" fill="#94a3b8" font-family="'SFMono-Regular', 'Cascadia Code', 'Menlo', monospace" font-size="24" letter-spacing="3">PACKET · TLS · RELIABILITY · STREAM · PRODUCTION</text>
+  </g>
+
+  <g opacity="0.44" filter="url(#glow)"><circle cx="1314" cy="360" r="5" fill="#c4b5fd"/><circle cx="1370" cy="430" r="4" fill="#fb7185"/><circle cx="1240" cy="520" r="4" fill="#fdba74"/><circle cx="1150" cy="350" r="3" fill="#67e8f9"/><path d="M1150 350 L1314 360 L1370 430 L1240 520 Z" fill="none" stroke="#c4b5fd" stroke-width="1.5" stroke-opacity="0.45"/></g>
+</svg>

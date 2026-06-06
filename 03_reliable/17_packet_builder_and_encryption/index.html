@@ -1,0 +1,2441 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="从协议设计到 quicX 网络库实践">
+      
+      
+        <meta name="author" content="ekko">
+      
+      
+      
+        <link rel="prev" href="../16_retransmission_semantics/">
+      
+      
+        <link rel="next" href="../18_timer_and_lifecycle_war_story/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+    
+    
+      
+        <title>17. 发包管线: PacketBuilder 与加密层调度 - 深入解析 QUIC 与 HTTP/3</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#17-packetbuilder" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-header__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            深入解析 QUIC 与 HTTP/3
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              17. 发包管线: PacketBuilder 与加密层调度
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-nav__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    深入解析 QUIC 与 HTTP/3
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    序言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷一: 基石时代 (基础设施)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷一: 基石时代 (基础设施)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    0. 卷一导读：在用户态重建网络世界的代价
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/01_memory_pool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. 内存的七巧板: 连接级内存池的设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/02_zero_copy_buffer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. 拷贝的艺术: 零拷贝 Buffer 的生存哲学
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/03_network_io_abstraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. 管道与枢纽: 网络 IO 的架构抽象
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/04_thread_model_and_lockfree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. 打破全局锁: One-Loop-Per-Thread 的无锁演进
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/05_async_timer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. 时空的刻度: 高效定时器与事件循环的融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二导读：打破四元组枷锁，重建连接的定义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/06_packet_and_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. 万物开端: QUIC Packet 解剖与连接世界地图
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/07_initial_keys_and_crypto_frame/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. 公开的秘密: Initial 密钥与 CRYPTO Frame 的起步逻辑
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/08_handshake_and_tls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. 破冰之握: 连接建立与 TLS 融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/09_zero_rtt_and_session_resume/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. 零等待的奇迹: 0-RTT 与会话恢复
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/10_address_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. 护城河: 地址验证与防放大攻击
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/11_connection_state_and_params/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. 连接的生死簿: 状态机与传输参数协商
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/12_connection_id_and_migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. 会飞的连接: Connection ID 与路径迁移
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    重构可靠传输：从包级确认到语义重传
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../13_why_quic_rebuilds_reliability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. 可靠性的代价: QUIC 为什么不再照搬 TCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../14_pn_space_and_ack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. ACK 的艺术: 序列号空间与确认边界
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../15_loss_detection_and_pto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. 消失与追踪: 丢包探测与 PTO 幽灵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../16_retransmission_semantics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. 重传的边界: 重发的不是 Packet, 而是语义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. 发包管线: PacketBuilder 与加密层调度
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. 发包管线: PacketBuilder 与加密层调度
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#171" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.1 从"该发什么"到"真正发出去"：发送路径中间隔着什么
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#172" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.2 谁先上车：控制帧、流数据与包容量的博弈
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#173" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.3 不同的门，不同的钥匙：加密级别切换与发送顺序
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#174-paddingtokencoalescing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.4 不是拼出来就完了：Padding、Token、Coalescing 带来的工程约束
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#175-quicx-packetbuildersendmanager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.5 quicX 的总装配线：PacketBuilder、SendManager 与调度分层如何落地
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#176" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.6 包从来不是自己长出来的：卷三这一段主线终于闭环
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../18_timer_and_lifecycle_war_story/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. 刺刀见红: 异步定时器与连接生命周期的暗战
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    拥塞控制：网络管道的物理学与控制论
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/19_rtt_and_cwnd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. 管道的容量: RTT 测量与拥塞窗口的第一原理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/20_reno_and_aimd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. 丢包即信号: Reno 与 AIMD 的经典控制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/21_cubic_and_high_bdp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. 立方的野心: Cubic 与高 BDP 网络的攻防
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/22_bbr_evolution_and_coexistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. 模型的革命: BBR 三代演进与算法共存
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/23_bbr_in_quicx/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    23. 速度的手术台: quicX 中拥塞控制的工程实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    多路复用与流控：并发的秩序与背压机制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/24_multiplexing_history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    24. 从队头阻塞到传输层并发: Stream 为什么是 QUIC 的另一半身体
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/25_stream_state_machine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    25. 流的诞生与终结: 发送与接收状态机
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/26_flow_control_windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    26. 双层流控与背压: 额度如何限制流，闸门关上后又如何打开
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/27_blocked_and_max_frames/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    27. quicX 的 Stream 管理: 从 pending 到 manager 的工程全景
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    抵达彼岸: HTTP/3 与乱序世界的契约
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/28_http3_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    28. 换一张地图: HTTP/3 的帧体系与控制面
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/29_http3_mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    29. 重新映射: 从 QUIC 流到请求与响应
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/30_qpack_compression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    30. QPACK: 乱序世界里的头压缩引擎
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/31_http3_connection_lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31. 一条 HTTP/3 连接的一生
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷七: 生产级修养
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷七: 生产级修养
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    生产级修养：从可用网络协议到工业级基础设施
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/32_metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32. 透明的眼睛: Metrics、日志上下文与可观测性基座
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/33_qlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33. 黑匣子: Qlog 可观测性实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/34_protocol_upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34. 通天塔的阶梯: HTTP 协议协商与版本升级
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/35_interop_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35. 试炼场: 与 Nginx / Quiche 的互联互通
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#171" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.1 从"该发什么"到"真正发出去"：发送路径中间隔着什么
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#172" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.2 谁先上车：控制帧、流数据与包容量的博弈
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#173" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.3 不同的门，不同的钥匙：加密级别切换与发送顺序
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#174-paddingtokencoalescing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.4 不是拼出来就完了：Padding、Token、Coalescing 带来的工程约束
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#175-quicx-packetbuildersendmanager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.5 quicX 的总装配线：PacketBuilder、SendManager 与调度分层如何落地
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#176" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17.6 包从来不是自己长出来的：卷三这一段主线终于闭环
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="17-packetbuilder">17. 发包管线：PacketBuilder 与加密层调度</h1>
+<p>第 16 章解决了"恢复什么"——丢了的包不会被原样重发，而是从发送缓冲区里取出相同语义的数据，装进全新的包发出去。但这句话藏着一个前提：你得先把那个"全新的包"造出来。</p>
+<p>造一个 QUIC Packet 远比往 TCP socket 里 <code>write()</code> 一段字节流复杂。TCP 只需要把数据追加到发送缓冲区，由内核帮你分段、编号、加密（如果走 TLS）。QUIC 把这些事全搬到了用户态：三个独立编号的 Packet Number Space、三套不同的 AEAD 密钥、1200 字节的最小数据报约束、多个包合并进同一 UDP 数据报的 Coalescing 优化——每一条规则都在约束"这个包该怎么拼"。</p>
+<p>这就是本章要回答的问题：那些等待发送、等待恢复、等待确认的语义，最终是怎样被组装成一个个可以真正交给 UDP 发出去的 Packet 的？</p>
+<p>本章的路线是：先讲帧优先级调度（17.1–17.2），再讲加密级别对发送路径的结构性约束（17.3），接着展开 Padding、Token、Coalescing 三个工程约束和一个完整的组包例子（17.4），然后落到 quicX 的实现（17.5），最后做卷三的阶段性收束（17.6）。</p>
+<hr />
+<h2 id="171">17.1 从"该发什么"到"真正发出去"：发送路径中间隔着什么</h2>
+<p>"知道该发什么"和"真正能发出去"之间，隔着一条很长的工程鸿沟。这条鸿沟由四道约束构成。</p>
+<p>第一道约束是容量。单个 QUIC Packet 的 payload 空间受限于 UDP 数据报的 MTU——一般在 1200 到 1472 字节之间。你不能把所有待发的 Frame 塞进一个包，必须决定哪些 Frame 放这个包、哪些等下一轮。</p>
+<p>第二道约束是空间隔离。Initial、Handshake、Application 三个 Packet Number Space 各自独立编号、各自使用不同的 AEAD 密钥（RFC 9000 §12.3）。一个 Initial 帧和一个 STREAM 帧不能被装进同一个 Packet——它们属于不同的加密级别。</p>
+<p>第三道约束是帧类型限制。并非所有 Frame 都能出现在所有级别的包里。RFC 9000 §12.4 明确规定，Initial 和 Handshake 包只允许携带 ACK、CRYPTO、PADDING、PING、CONNECTION_CLOSE 五种帧。STREAM、MAX_DATA 这类帧只能出现在 Application（1-RTT）包中。这条规则直接决定了发送管线在过滤帧时必须感知当前的加密级别。</p>
+<p>第四道约束是对端状态。如果握手还没完成，对端不具备解密 1-RTT 包的能力，你就不能发 Application 包。发送路径必须实时感知连接的握手进度。</p>
+<p>四道约束叠加在一起，使得 QUIC 的发送路径变成了一个调度与装配的过程：决定"谁先说"（优先级），判断"能不能说"（加密级别），控制"说多少"（容量），正确地"组装起来"（Packet 构造）。这就是 quicX 需要 <code>SendManager</code>、<code>PacketBuilder</code>、<code>EncryptionLevelScheduler</code> 三个模块协作的原因——如果把这些逻辑写成一把梭的代码，每加一条新规则都会在发送路径里撕开一道口子。</p>
+<hr />
+<h2 id="172">17.2 谁先上车：控制帧、流数据与包容量的博弈</h2>
+<p>发送路径面对的最现实问题不是"怎么拼包"，而是"让谁先上"。单个 Packet 的 payload 空间有限，每次发包都是一道选择题：控制帧想上车，流数据也想上车，恢复中的语义想上车，全新数据也想上车——但座位就那么几个，让谁先上？</p>
+<p>答案藏在协议设计的优先级排序里。</p>
+<p>第一优先级是 ACK。ACK 是可靠性的根基——没有 ACK，发送端不知道哪些包到了、哪些包丢了，后续的丢包探测和重传全部无法启动。因此，当发送端准备发包时，如果有待发的 ACK Frame，它会被优先塞进 Packet。在 quicX 的实现里，这个优先级体现得很直接：<code>BaseConnection::TrySend()</code> 在收集完所有控制帧之后，会把 ACK 帧插到帧列表的最前面——确保它第一个被编码进包。</p>
+<p>第二优先级是控制帧。MAX_DATA、MAX_STREAM_DATA 告诉对方"你可以继续发数据了"；PING 用来保活和触发 ACK；PATH_CHALLENGE、PATH_RESPONSE 用来探测路径状态。这些帧不携带应用数据，但它们维系着连接的生命体征——如果它们没发出去，连接可能会卡住。</p>
+<p>第三优先级是恢复中的语义。丢了的包需要重传（第 16 章的核心结论）。如果某个 STREAM Frame 丢了，发送端需要尽快重传它的语义。恢复中的语义通常比全新数据更紧急——因为已经"欠"了对方一些数据。</p>
+<p>最后才是全新的应用数据。一个刚写入的 STREAM Frame，如果没有丢包压力，可以等下一轮发送机会。</p>
+<p>但优先级调度还受到一个硬约束：帧类型限制。RFC 9000 §12.4 规定，不同加密级别的包只允许携带特定类型的帧：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌──────────────────────┬─────────────────────────────────────────┐
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│    Packet 类型        │         允许的帧类型                      │
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├──────────────────────┼─────────────────────────────────────────┤
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│ Initial              │ ACK, CRYPTO, PADDING, PING,             │
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│                      │ CONNECTION_CLOSE                        │
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>├──────────────────────┼─────────────────────────────────────────┤
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│ Handshake            │ ACK, CRYPTO, PADDING, PING,             │
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│                      │ CONNECTION_CLOSE                        │
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├──────────────────────┼─────────────────────────────────────────┤
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│ 0-RTT                │ STREAM, PADDING, PING,                  │
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│                      │ MAX_DATA, MAX_STREAM_DATA, ...          │
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│                      │ （不允许 ACK）                             │
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├──────────────────────┼─────────────────────────────────────────┤
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│ 1-RTT (Application)  │ 所有帧类型                                │
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>└──────────────────────┴─────────────────────────────────────────┘
+</span></code></pre></div>
+<p>这意味着，就算有一堆 STREAM 帧在排队等发，如果当前只能构造 Initial 包，发送管线也必须把它们全部跳过——只带走 ACK、CRYPTO 和 PADDING。这不是实现上的偷懒，而是协议层面的硬规则。quicX 的 <code>SendManager::GetPendingFrames()</code> 就做了这个过滤：当加密级别不是 Application 时，只取走 ACK、CRYPTO、PADDING、PING、CONNECTION_CLOSE 五种帧，其余帧留在队列里等下一轮。</p>
+<p>发送管线的微妙之处正在于此：它不只是序列化——把 Frame 变成字节流塞进 Packet。它更是调度——在有限的容量约束和帧类型限制下，决定谁先上路、谁必须等待。</p>
+<hr />
+<h2 id="173">17.3 不同的门，不同的钥匙：加密级别切换与发送顺序</h2>
+<p>发送路径不仅要回答"谁先上车"，还要回答一个更根本的问题：这辆车能不能开？能不能开，取决于当前手里有哪些密钥。</p>
+<p>QUIC 的三个 Packet Number Space——Initial、Handshake、Application——各自使用不同的 AEAD 密钥（RFC 9001 §5）。发送端在发包时，必须清楚地知道当前有哪些密钥可用：</p>
+<ul>
+<li>握手早期：只有 Initial 密钥，只能发 Initial 包。</li>
+<li>握手中期：有了 Initial 和 Handshake 两把密钥，可以发两种包，但 Application 包还是发不了。</li>
+<li>握手完成后：三把密钥齐全，所有类型的包都可以发。</li>
+</ul>
+<p>密钥的获取是渐进式的——每完成一步 TLS 握手，就多解锁一个加密级别。这种渐进式解锁直接塑造了发送路径的结构：发送管线必须在每次发包前查询"当前最高可用级别是什么"，然后决定构造哪种类型的包。</p>
+<p>更值得注意的是多级别并存时的发送顺序问题。在握手推进的过程中，同一时刻可能有多个级别都有数据待发。比如，服务端刚收到 ClientHello，它需要同时发 Initial ACK（确认收到 ClientHello）和 Handshake 包（携带 ServerHello 的 CRYPTO 帧）。这时候该先发哪个？</p>
+<p>答案是：低级别优先。理由很实际——如果对端还卡在 Initial 阶段等你的 ACK，你先发一个 Handshake 包过去它根本解不了。quicX 的 <code>EncryptionLevelScheduler::GetNextSendContext()</code> 就实现了这个逻辑：当检测到低级别（如 Initial 或 Handshake）有未发送的 ACK 时，即使当前已经进入了更高的加密级别，也会优先回退到低级别去发 ACK——这就是"跨级别 ACK"调度。</p>
+<p>这种调度的优先级排序是：</p>
+<ol>
+<li>跨级别 ACK（低级别有未确认的包需要 ACK）</li>
+<li>路径探测（PATH_CHALLENGE/PATH_RESPONSE，必须在 1-RTT 包中发送）</li>
+<li>0-RTT 早期数据（客户端在 Initial 之后、握手完成之前发送的应用数据）</li>
+<li>当前加密级别的正常数据</li>
+</ol>
+<p>密钥还有一个生命周期约束：当握手完成、双方确认不再需要某个级别的密钥时，该级别的密钥会被丢弃（RFC 9001 §4.9）。丢弃 Initial 密钥后，即使有 Initial 级别的 ACK 待发，发送管线也无能为力——密钥已经不在了。quicX 在跨级别 ACK 调度时会检查密钥是否仍然存在，如果已丢弃就直接跳过。</p>
+<p>发送路径不是简单的"把 Frame 装进 Packet"——它还受加密级别的约束。不同的门需要不同的钥匙；没有钥匙，门就打不开。</p>
+<hr />
+<h2 id="174-paddingtokencoalescing">17.4 不是拼出来就完了：Padding、Token、Coalescing 带来的工程约束</h2>
+<p>Packet 构造不只是往包里塞 Frame。在帧被选好、加密级别确定之后，还有三个工程约束等在前面：Padding、Token、Coalescing。</p>
+<p><strong>Padding：不是每个包都要填充，但 Initial 数据报必须</strong></p>
+<p>RFC 9000 §14.1 规定：承载 Initial 包的 UDP 数据报至少为 1200 字节。注意，这个约束的对象是 UDP 数据报（datagram），不是 QUIC Packet 本身。如果一个 UDP 数据报只包含一个 Initial 包，而那个包的实际内容不足 1200 字节，发送端就需要用 PADDING 帧把它撑到 1200 字节。</p>
+<p>为什么？这是一个反放大攻击的设计。如果攻击者伪造源地址发一个很小的 Initial 包，服务端可能回复一个大得多的 Handshake 响应——形成流量放大。1200 字节的下限确保了攻击者至少要付出与响应同等量级的带宽成本。</p>
+<p>Padding 还有一个次要用途：混淆包长度，对抗基于流量分析的攻击。不过这更多是可选的安全增强，而非协议强制要求。</p>
+<p>在 quicX 的 <code>PacketBuilder::BuildDataPacket()</code> 中，当加密级别为 <code>kInitial</code> 且 <code>add_padding</code> 标志为 true 时，构建器会计算当前包大小与 1200 字节的差值，创建一个对应大小的 <code>PaddingFrame</code> 补齐。</p>
+<p><strong>Token：来自 Retry 或 NEW_TOKEN，不是 Version Negotiation</strong></p>
+<p>客户端在首次连接或地址变化后，可能会收到服务端的 Retry 包，其中携带一个 Token。客户端在重新发送 Initial 包时，必须把这个 Token 原样放进包头的 Token 字段（RFC 9000 §8.1）。Token 也可能来自之前连接中服务端通过 NEW_TOKEN 帧下发的令牌——客户端可以在新连接的 Initial 包中携带它，以跳过地址验证。</p>
+<p>Token 不是 Frame，它是 Initial 包头的一个独立字段。发送路径需要知道"当前有没有 Token"，如果有，就把它编码进 Initial 包的头部。在 quicX 中，Token 存储在 <code>SendManager</code> 的 <code>token_</code> 成员里，构建 <code>DataPacketContext</code> 时传给 <code>PacketBuilder</code>。</p>
+<p><strong>Coalescing：同一个 UDP 数据报里装多个不同级别的包</strong></p>
+<p>RFC 9000 §12.2 允许把多个 QUIC Packet 合并进同一个 UDP 数据报发送。接收端依次解析数据报中的每个包，用各自的密钥解密。这就是 Coalescing。</p>
+<p>Coalescing 有两个约束。第一是容量约束：合并后的总长度不能超过 UDP 数据报的 MTU 限制。第二是格式约束：长头包（Long Header，即 Initial、Handshake、0-RTT）必须排在短头包（Short Header，即 1-RTT）前面。原因很直接——长头包有 Length 字段，接收端可以通过 Length 字段知道当前包在哪里结束、下一个包从哪里开始；而短头包没有 Length 字段，接收端只能假设短头包占据了数据报的全部剩余空间。所以短头包只能放在最后。</p>
+<p>用一个握手期的真实场景来看 Coalescing 的效果。客户端发送初始连接请求时，一个 UDP 数据报的结构可能是这样的：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>┌─────────────────────── UDP Datagram (1200 bytes) ───────────────────────┐
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>│                                                                         │
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>│  ┌─── Initial Packet ─────────────────────────────────────────────┐    │
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>│  │ Long Header: Version, DCID, SCID, Token                       │    │
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>│  │ Packet Number: 0                                               │    │
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>│  │ Payload:                                                       │    │
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>│  │   CRYPTO Frame (ClientHello, ~300 bytes)                       │    │
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>│  │   PADDING Frame (~850 bytes, 撑到 1200 字节)                    │    │
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>│  │ Length 字段: 标识本包的 payload+PN+AEAD tag 长度                  │    │
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>│  └────────────────────────────────────────────────────────────────┘    │
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>│                                                                         │
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>└─────────────────────────────────────────────────────────────────────────┘
+</span></code></pre></div>
+<p>这是最简单的情况——只有一个 Initial 包，PADDING 把数据报撑到 1200 字节。</p>
+<p>当服务端收到 ClientHello 并回复时，它可能在同一个 UDP 数据报里合并 Initial 和 Handshake 两个包：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>┌─────────────────────── UDP Datagram (≤ MTU) ────────────────────────────┐
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>│                                                                         │
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>│  ┌─── Initial Packet ────────────────────────┐                         │
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>│  │ Long Header (Version, DCID, SCID)         │                         │
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>│  │ PN: 0                                     │                         │
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>│  │ Payload: ACK Frame (确认客户端 Initial #0)  │                         │
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>│  │ Length: 标识本包边界                        │                         │
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>│  └───────────────────────────────────────────┘                         │
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>│                                                                         │
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>│  ┌─── Handshake Packet ──────────────────────────────────────────┐     │
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>│  │ Long Header (Version, DCID, SCID)                             │     │
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>│  │ PN: 0 (Handshake 空间独立编号，从 0 开始)                       │     │
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>│  │ Payload: CRYPTO Frame (ServerHello + 证书 + ...)               │     │
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>│  │ Length: 标识本包边界                                            │     │
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>│  └───────────────────────────────────────────────────────────────┘     │
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>│                                                                         │
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>└─────────────────────────────────────────────────────────────────────────┘
+</span></code></pre></div>
+<p>两个包合并在一个 UDP 数据报里，省去了两次系统调用的开销。接收端通过 Initial 包的 Length 字段找到第一个包的边界，跳到 Handshake 包的起始位置继续解析。如果数据报里还有 1-RTT 包，它一定排在最后——因为短头包没有 Length 字段。</p>
+<p>Padding、Token、Coalescing 这三个机制说明了一个道理：Packet 构造不是简单的 Frame 拼装，而是一系列协议约束的协调。容量约束、格式约束、安全约束——每一个"装进包里"的动作，都需要满足协议层面的规则。</p>
+<hr />
+<h2 id="175-quicx-packetbuildersendmanager">17.5 quicX 的总装配线：PacketBuilder、SendManager 与调度分层如何落地</h2>
+<p>协议层面的发送管线已经讲清楚了——优先级调度、加密级别约束、Padding/Token/Coalescing。现在看 quicX 是怎么把这些规则落进代码的。</p>
+<p>quicX 的发送路径由四个模块协作完成，每个模块只管一件事：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>                         ┌─────────────────────────────────┐
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>                         │     BaseConnection::TrySend()   │
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>                         │         （发送编排入口）            │
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>                         └──────────────┬──────────────────┘
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>                                        │
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>          ┌─────────────────────────────┼─────────────────────────────┐
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>          ▼                             ▼                             ▼
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>┌─────────────────┐         ┌────────────────────┐        ┌──────────────────┐
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>│ EncryptionLevel │         │   SendManager      │        │  RecvControl     │
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>│ Scheduler       │         │                    │        │                  │
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>│                 │         │ GetPendingFrames() │        │ MayGenerateAck   │
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>│ 决定用哪把密钥    │         │ 决定发哪些帧         │        │ Frame()          │
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>│ GetNextSend     │         │                    │        │ 生成 ACK 帧       │
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>│ Context()       │         │ wait_frame_list_   │        │                  │
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>└─────────────────┘         │ stream_manager_    │        └──────────────────┘
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>                            └────────┬───────────┘
+</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>                                     │ 帧列表
+</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>                                     ▼
+</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>                         ┌────────────────────────┐
+</span><span id="__span-3-20"><a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a>                         │    PacketBuilder       │
+</span><span id="__span-3-21"><a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a>                         │                        │
+</span><span id="__span-3-22"><a id="__codelineno-3-22" name="__codelineno-3-22" href="#__codelineno-3-22"></a>                         │ BuildDataPacket()      │
+</span><span id="__span-3-23"><a id="__codelineno-3-23" name="__codelineno-3-23" href="#__codelineno-3-23"></a>                         │ 把帧装进 Packet，        │
+</span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>                         │ 设 PN、加密、Padding     │
+</span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a>                         └────────────┬───────────┘
+</span><span id="__span-3-26"><a id="__codelineno-3-26" name="__codelineno-3-26" href="#__codelineno-3-26"></a>                                      │ 编码后的字节
+</span><span id="__span-3-27"><a id="__codelineno-3-27" name="__codelineno-3-27" href="#__codelineno-3-27"></a>                                      ▼
+</span><span id="__span-3-28"><a id="__codelineno-3-28" name="__codelineno-3-28" href="#__codelineno-3-28"></a>                         ┌────────────────────────┐
+</span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a>                         │    UDP Sender          │
+</span><span id="__span-3-30"><a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a>                         │    sender_-&gt;Send()     │
+</span><span id="__span-3-31"><a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>                         └────────────────────────┘
+</span></code></pre></div>
+<p><code>EncryptionLevelScheduler</code> 负责回答"用哪把密钥"。它查询当前连接的加密状态，按优先级选择加密级别：跨级别 ACK 最优先，路径探测次之，0-RTT 再次，最后才是当前级别的正常数据。选定级别后，<code>TrySend()</code> 拿到对应的 <code>ICryptographer</code>。</p>
+<p><code>SendManager</code> 负责回答"发哪些帧"。它维护一个待发帧列表 <code>wait_frame_list_</code>（<code>std::list&lt;std::shared_ptr&lt;IFrame&gt;&gt;</code>）。当连接的各个模块——流管理器、流控、路径管理器——需要发送控制帧时，调用 <code>ToSendFrame()</code> 把帧插到列表头部。<code>GetPendingFrames(level, max_bytes)</code> 从列表中按序取帧，同时做加密级别过滤：如果当前级别不是 Application，则只取走 ACK、CRYPTO、PADDING、PING、CONNECTION_CLOSE 这五种帧，其余跳过。ACK 帧不在这个列表里——它由 <code>RecvControl::MayGenerateAckFrame()</code> 单独生成，然后被 <code>TrySend()</code> 插到帧列表的最前面，确保 ACK 总是第一个被编码进包。</p>
+<p><code>PacketBuilder</code> 负责"把帧装进包"。它的核心方法是 <code>BuildDataPacket()</code>，接收一个 <code>DataPacketContext</code>（包含加密级别、密钥、帧列表、流管理器等），输出一个编码好的 Packet。这个方法的工作流程可以概括为六步：</p>
+<ol>
+<li>创建 <code>FixBufferFrameVisitor</code>，限制 payload 上限为 1420 字节（MTU 1472 减去头部和 AEAD tag 的安全余量）。</li>
+<li>逐一把控制帧编码进 visitor 的缓冲区。如果空间不足，停止添加——剩余帧留到下一轮。</li>
+<li>如果允许携带流数据，调用 <code>StreamManager::BuildStreamFrames()</code> 把流数据帧也编码进来。</li>
+<li>如果是 Initial 包且需要 Padding，计算与 1200 字节的差值，补齐 <code>PaddingFrame</code>。</li>
+<li>根据加密级别创建对应的 Packet 对象（<code>InitPacket</code>/<code>HandshakePacket</code>/<code>Rtt1Packet</code>），设置连接 ID、版本号、Token（仅 Initial）。</li>
+<li>从 <code>PacketNumber</code> 对象分配新的包号，设置 payload 和 <code>ICryptographer</code>，调用 <code>packet-&gt;Encode()</code> 完成 AEAD 加密和 Header Protection，最后记录到 <code>SendControl</code> 用于拥塞控制和丢包追踪。</li>
+</ol>
+<p><code>BaseConnection::TrySend()</code> 是整个管线的编排入口。每当有数据就绪（流写入、控制帧入队、定时器触发），连接会调用 <code>ActiveSend()</code> 把自己注册到 Worker 的活跃连接列表上。Worker 在事件循环中调度到这条连接时，执行 <code>TrySend()</code>。<code>TrySend()</code> 做的事情按顺序是：</p>
+<ol>
+<li>检查连接状态——已关闭或 Draining 则直接返回。</li>
+<li>检查丢包重传——<code>SendControl</code> 如果有标记为丢失的包，取出队首，分配新包号，重新 <code>Encode()</code> 后直接发送。这条路径优先于新数据，保证丢包恢复的时效性。</li>
+<li>获取发送上下文——调用 <code>EncryptionLevelScheduler::GetNextSendContext()</code> 确定加密级别和是否有 pending ACK。</li>
+<li>检查拥塞窗口——<code>SendManager::GetAvailableWindow()</code> 返回当前可用的发送配额。如果为零，标记 cwnd limited 后返回。</li>
+<li>获取待发帧——<code>SendManager::GetPendingFrames()</code> 过滤出匹配当前加密级别的帧。</li>
+<li>生成 ACK 帧——如果有 pending ACK，调用 <code>RecvControl::MayGenerateAckFrame()</code> 生成 ACK 帧并插到帧列表最前面。</li>
+<li>构建并发送——组装 <code>DataPacketContext</code>，调用 <code>PacketBuilder::BuildDataPacket()</code>，然后 <code>SendBuffer()</code> 交给 UDP 发送。</li>
+</ol>
+<p>quicX 还区分了两条发送路径：普通发送（Normal Send）和立即发送（Immediate Send）。上面描述的 <code>TrySend()</code> 是普通路径，它经过拥塞控制检查，支持多帧聚合，通过 Worker 事件循环调度。立即发送路径则完全不同——它不经过拥塞控制，不经过 <code>EncryptionLevelScheduler</code>，每次只发一个帧。典型的触发场景是：收到对端数据后需要立刻回 ACK（<code>SendImmediateAck()</code>），或者路径探测需要立刻发 PATH_RESPONSE。这两条路径的底层都调用 <code>PacketBuilder</code>，但触发方式、约束条件、帧容量完全不同。</p>
+<p>这种分层的好处是关注点分离。<code>EncryptionLevelScheduler</code> 不需要知道帧的内容；<code>SendManager</code> 不需要知道密钥是否就绪；<code>PacketBuilder</code> 不需要知道帧的优先级。每个模块只做好自己的事，整体协作完成"把语义装进 Packet 发出去"这个任务。当需要修改某条规则——比如调整帧优先级、增加新的加密级别、修改 Padding 策略——改动只会影响一个模块，不会波及整条管线。</p>
+<hr />
+<h2 id="176">17.6 包从来不是自己长出来的：卷三这一段主线终于闭环</h2>
+<p>卷三走到这里，QUIC 可靠传输的完整闭环终于合上了。</p>
+<p>第 14 章给出了确认坐标——ACK 告诉发送端"哪些包到了"。第 15 章给出了丢包判断——超时和乱序阈值告诉发送端"哪些包可能丢了"。第 16 章给出了语义恢复——丢了的帧不会被原样重发，而是从发送缓冲区里重新取出语义、装进新包。第 17 章给出了实际发送路径——那些等待发送和等待恢复的语义，经过优先级调度、加密级别选择、Padding/Coalescing 约束、<code>PacketBuilder</code> 编码，最终变成一个可以交给 UDP 发出去的字节序列。</p>
+<p>四章环环相扣：ACK 驱动丢包探测，丢包探测触发语义恢复，语义恢复把帧推进发送管线，发送管线把帧变成 Packet 送上网络——然后新一轮 ACK 开始。</p>
+<p>但协议规则从纸面走进代码时，还有一类问题是前面四章都没有触及的：竞态。定时器回调和数据到达交错执行、连接关闭和发送路径并发访问、密钥丢弃和延迟到达的包产生冲突——这些是只有在真正运行的系统里才会暴露的问题。</p>
+<p>包从来不是自己长出来的——它是协议设计与工程实现共同孕育的产物。而那些让实现真正"崩掉"的故事，留给下一章。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="页脚" >
+        
+          
+          <a href="../16_retransmission_semantics/" class="md-footer__link md-footer__link--prev" aria-label="上一页: 16. 重传的边界: 重发的不是 Packet, 而是语义">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                上一页
+              </span>
+              <div class="md-ellipsis">
+                16. 重传的边界: 重发的不是 Packet, 而是语义
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../18_timer_and_lifecycle_war_story/" class="md-footer__link md-footer__link--next" aria-label="下一页: 18. 刺刀见红: 异步定时器与连接生命周期的暗战">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                下一页
+              </span>
+              <div class="md-ellipsis">
+                18. 刺刀见红: 异步定时器与连接生命周期的暗战
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.indexes", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

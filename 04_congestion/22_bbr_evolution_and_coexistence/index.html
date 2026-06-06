@@ -1,0 +1,2451 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="从协议设计到 quicX 网络库实践">
+      
+      
+        <meta name="author" content="ekko">
+      
+      
+      
+        <link rel="prev" href="../21_cubic_and_high_bdp/">
+      
+      
+        <link rel="next" href="../23_bbr_in_quicx/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+    
+    
+      
+        <title>22. 模型的革命: BBR 三代演进与算法共存 - 深入解析 QUIC 与 HTTP/3</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#22-bbr" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-header__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            深入解析 QUIC 与 HTTP/3
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              22. 模型的革命: BBR 三代演进与算法共存
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-nav__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    深入解析 QUIC 与 HTTP/3
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    序言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷一: 基石时代 (基础设施)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷一: 基石时代 (基础设施)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    0. 卷一导读：在用户态重建网络世界的代价
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/01_memory_pool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. 内存的七巧板: 连接级内存池的设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/02_zero_copy_buffer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. 拷贝的艺术: 零拷贝 Buffer 的生存哲学
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/03_network_io_abstraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. 管道与枢纽: 网络 IO 的架构抽象
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/04_thread_model_and_lockfree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. 打破全局锁: One-Loop-Per-Thread 的无锁演进
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/05_async_timer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. 时空的刻度: 高效定时器与事件循环的融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二导读：打破四元组枷锁，重建连接的定义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/06_packet_and_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. 万物开端: QUIC Packet 解剖与连接世界地图
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/07_initial_keys_and_crypto_frame/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. 公开的秘密: Initial 密钥与 CRYPTO Frame 的起步逻辑
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/08_handshake_and_tls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. 破冰之握: 连接建立与 TLS 融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/09_zero_rtt_and_session_resume/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. 零等待的奇迹: 0-RTT 与会话恢复
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/10_address_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. 护城河: 地址验证与防放大攻击
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/11_connection_state_and_params/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. 连接的生死簿: 状态机与传输参数协商
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/12_connection_id_and_migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. 会飞的连接: Connection ID 与路径迁移
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    重构可靠传输：从包级确认到语义重传
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/13_why_quic_rebuilds_reliability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. 可靠性的代价: QUIC 为什么不再照搬 TCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/14_pn_space_and_ack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. ACK 的艺术: 序列号空间与确认边界
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/15_loss_detection_and_pto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. 消失与追踪: 丢包探测与 PTO 幽灵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/16_retransmission_semantics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. 重传的边界: 重发的不是 Packet, 而是语义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/17_packet_builder_and_encryption/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. 发包管线: PacketBuilder 与加密层调度
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/18_timer_and_lifecycle_war_story/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. 刺刀见红: 异步定时器与连接生命周期的暗战
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    拥塞控制：网络管道的物理学与控制论
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../19_rtt_and_cwnd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. 管道的容量: RTT 测量与拥塞窗口的第一原理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../20_reno_and_aimd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. 丢包即信号: Reno 与 AIMD 的经典控制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../21_cubic_and_high_bdp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. 立方的野心: Cubic 与高 BDP 网络的攻防
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. 模型的革命: BBR 三代演进与算法共存
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. 模型的革命: BBR 三代演进与算法共存
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#221-bbr-btlbw-rtprop-bdp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.1 BBR 的核心模型：BtlBw × RTprop = BDP
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#222-v1-inflight-cubic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.2 v1 的突破与代价：吞吐优异，但 inflight 膨胀挤压 Cubic
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#223-v2-loss-tolerance-inflight" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.3 v2 的公平性修正：引入 loss tolerance 与 inflight 上限
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#224-v3-loss-based-bound-probe-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.4 v3 的收敛：loss-based bound 与 Probe-RTT 改进
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#225-bbr-cubic-reno" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.5 算法共存的真实世界：BBR / Cubic / Reno 混跑时谁赢谁输
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#226" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.6 协议库为什么不能只押注一种答案
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../23_bbr_in_quicx/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    23. 速度的手术台: quicX 中拥塞控制的工程实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    多路复用与流控：并发的秩序与背压机制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/24_multiplexing_history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    24. 从队头阻塞到传输层并发: Stream 为什么是 QUIC 的另一半身体
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/25_stream_state_machine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    25. 流的诞生与终结: 发送与接收状态机
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/26_flow_control_windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    26. 双层流控与背压: 额度如何限制流，闸门关上后又如何打开
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/27_blocked_and_max_frames/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    27. quicX 的 Stream 管理: 从 pending 到 manager 的工程全景
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    抵达彼岸: HTTP/3 与乱序世界的契约
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/28_http3_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    28. 换一张地图: HTTP/3 的帧体系与控制面
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/29_http3_mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    29. 重新映射: 从 QUIC 流到请求与响应
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/30_qpack_compression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    30. QPACK: 乱序世界里的头压缩引擎
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/31_http3_connection_lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31. 一条 HTTP/3 连接的一生
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷七: 生产级修养
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷七: 生产级修养
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    生产级修养：从可用网络协议到工业级基础设施
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/32_metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32. 透明的眼睛: Metrics、日志上下文与可观测性基座
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/33_qlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33. 黑匣子: Qlog 可观测性实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/34_protocol_upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34. 通天塔的阶梯: HTTP 协议协商与版本升级
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/35_interop_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35. 试炼场: 与 Nginx / Quiche 的互联互通
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#221-bbr-btlbw-rtprop-bdp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.1 BBR 的核心模型：BtlBw × RTprop = BDP
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#222-v1-inflight-cubic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.2 v1 的突破与代价：吞吐优异，但 inflight 膨胀挤压 Cubic
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#223-v2-loss-tolerance-inflight" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.3 v2 的公平性修正：引入 loss tolerance 与 inflight 上限
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#224-v3-loss-based-bound-probe-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.4 v3 的收敛：loss-based bound 与 Probe-RTT 改进
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#225-bbr-cubic-reno" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.5 算法共存的真实世界：BBR / Cubic / Reno 混跑时谁赢谁输
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#226" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22.6 协议库为什么不能只押注一种答案
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="22-bbr">22. 模型的革命：BBR 三代演进与算法共存</h1>
+<p>Cubic 把丢包驱动推到了巅峰——三次函数曲线在高 BDP 网络上的恢复速度是 Reno 的二十倍，HyStart 抑制了慢启动过冲，TCP-Friendly Region 保证了与 Reno 的公平共存。但上一章的结尾也暴露了这个范式的三个结构性天花板：随机丢包被误判为拥塞，深缓冲区掩盖了真实排队，发送方永远无法知道管道到底有多大。</p>
+<p>本章讲一条完全不同的道路。2016 年，Cardwell、Cheng、Jacobson 等人在 Google 提出了 BBR（Bottleneck Bandwidth and Round-trip propagation time），第一次认真地说：不要等到管道溢出才知道它有多大，直接去测量它。六节依次覆盖：BBR 的核心模型与丢包驱动的根本区别、v1 在真实网络中暴露的 inflight 膨胀问题、v2 引入 inflight 上限和丢包轮次追踪的公平性修正、v3 用 loss-based bound 和 ProbeBW 子状态实现的收敛改进、三种算法混跑时的竞争动态，以及为什么协议库不能只押注一种答案。</p>
+<hr />
+<h2 id="221-bbr-btlbw-rtprop-bdp">22.1 BBR 的核心模型：BtlBw × RTprop = BDP</h2>
+<p>Reno 和 Cubic 共享同一个世界观：发送方对网络管道一无所知，只能不停地加速，等到丢包了才知道"满了"。BBR 问了一个不同的问题：<strong>能不能不等管道溢出，直接测量它有多大？</strong></p>
+<p>答案的基础是两个物理量。</p>
+<p><strong>BtlBw（Bottleneck Bandwidth，瓶颈带宽）</strong>。一条网络路径由多段链路串联而成，每段链路有各自的容量。整条路径能承载的最大传输速率，由容量最小的那段决定——这就是瓶颈带宽。BBR 通过持续测量"已送达的数据量 / 对应的时间间隔"来估计这个值，并用一个滑动窗口最大值过滤器记住近期观测到的最大带宽。</p>
+<p><strong>RTprop（Round-trip Propagation Time，往返传播时延）</strong>。这是数据包在路径上跑一个来回的最短时间——不含任何排队时延，只有信号在光纤或铜线中的物理传播时间。BBR 通过跟踪观测到的最小 RTT 来逼近这个值。</p>
+<p>两个量的乘积给出管道的容量：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>BDP = BtlBw × RTprop
+</span></code></pre></div>
+<p>BDP 就是网络管道在任意时刻"刚好能装下"的数据量——所有数据都在传播途中，没有一个字节在排队。</p>
+<p>BBR 的控制策略直接建立在这个模型上：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>发送速率 = BtlBw          ← 匹配瓶颈，不要快过它
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>inflight 目标 ≈ BDP       ← 刚好填满管道，不要溢出
+</span></code></pre></div>
+<p>这和 Reno/Cubic 的策略形成了鲜明对比。来看两种方法在同一个场景下的行为：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>场景：1 Gbps / 50ms 链路，BDP ≈ 6.25 MB
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>Reno/Cubic 的做法：
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  不知道管道多大 → 持续增加 cwnd → 填满管道 → 填满缓冲区
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  → 丢包 → 减速 → 再增长 → 再丢包 → 循环往复
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>  结果：cwnd 在 BDP 到 BDP + 缓冲区 之间锯齿振荡
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>BBR 的做法：
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>  测量 BtlBw = 1 Gbps，RTprop = 50ms
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>  → 设置发送速率 = 1 Gbps，inflight 目标 = 6.25 MB
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>  → 管道刚好填满，缓冲区几乎为空
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>  结果：持续高吞吐，排队时延接近零
+</span></code></pre></div>
+<p>这就是为什么 BBR 在理论上能同时实现高吞吐和低时延——它不需要填满缓冲区就能知道管道有多大。Reno/Cubic 把缓冲区当作"探测管道容量的代价"，BBR 把缓冲区当作"应该避免占用的资源"。</p>
+<p>但这个模型有一个根本性的测量困境：<strong>BtlBw 和 RTprop 不能同时被精确测量。</strong></p>
+<p>要测量真实的 BtlBw，需要让管道满载——发送足够多的数据来把瓶颈链路跑满。但管道满载时，数据会在瓶颈链路前排队，RTT 上升，此时观测到的 RTT 不再是 RTprop，而是 RTprop + 排队时延。</p>
+<p>要测量真实的 RTprop，需要让管道接近空载——减少 inflight 数据量，直到路径上没有排队。但管道空载时，实际传输速率远低于 BtlBw，此时无法准确估计瓶颈带宽。</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>             ← 测 RTprop 更准 →    ← 测 BtlBw 更准 →
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>inflight:    很低                  ≈ BDP               &gt;&gt; BDP
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>RTT:         ≈ RTprop              RTprop + 少量排队    RTprop + 大量排队
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>实际速率:    低于 BtlBw            ≈ BtlBw             ≈ BtlBw（但在排队）
+</span></code></pre></div>
+<p>这个不可同时性是 BBR 所有复杂性的根源。BBR 的四种运行模式——Startup、Drain、ProbeBW、ProbeRTT——本质上都是在"测带宽"和"测时延"之间交替切换，试图用时间分割的方式逼近两个无法同时获得的测量值。而 v1 到 v3 的三代演进，很大程度上都在回答一个问题：这种交替测量在真实网络中遇到了什么障碍，又该如何修正。</p>
+<hr />
+<h2 id="222-v1-inflight-cubic">22.2 v1 的突破与代价：吞吐优异，但 inflight 膨胀挤压 Cubic</h2>
+<p>BBR v1（Cardwell 等人，2016）的四种运行模式构成了一个完整的探测-稳态循环：</p>
+<p><strong>Startup</strong>：连接建立后进入指数增长阶段，pacing_gain 设为 2/ln(2) ≈ 2.885。这个增益让发送速率每轮翻倍，在 O(log₂(BDP)) 个 RTT 内找到 BtlBw。退出条件不是丢包，而是带宽估计连续三轮不再增长——说明瓶颈链路已经被跑满，继续加速只会堆积队列。</p>
+<p><strong>Drain</strong>：Startup 阶段的指数增长会在管道中堆积约 2 个 BDP 的队列。Drain 模式把 pacing_gain 降到 Startup 的倒数（约 0.35），快速排空队列，直到 inflight 降到 BDP 水平。</p>
+<p><strong>ProbeBW</strong>：稳态运行模式，BBR 大约 98% 的时间在这里度过。v1 使用一个 8 相增益循环：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ProbeBW 增益循环（v1）：
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  [5/4, 3/4, 1, 1, 1, 1, 1, 1]
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>   ↑     ↑    ↑
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>   探测   排空  巡航（6轮）
+</span></code></pre></div>
+<p>第一相（5/4）：pacing_gain 为 1.25，以略高于 BtlBw 的速率发送。如果可用带宽增加了（比如其他流退出了），这个探测会发现新的 BtlBw。如果带宽没变，多出的 25% 数据会进入缓冲区，产生少量排队。</p>
+<p>第二相（3/4）：pacing_gain 为 0.75，排空上一相产生的队列。</p>
+<p>后六相（1）：以 BtlBw 匀速发送，不产生也不消耗队列。</p>
+<p><strong>ProbeRTT</strong>：每 10 秒触发一次。v1 把 cwnd 降到 4 个 MSS，持续 200ms，清空路径上的队列来刷新 RTprop 估计。</p>
+<p>v1 在 Google 的生产环境中展示了惊人的效果。在 B4 广域网上，BBR 的吞吐量比 Cubic 高出 2 到 25 倍。在 YouTube 全球边缘网络上，中位数 RTT 降低了 53%，发展中国家超过 80%。在 5% 随机丢包率下，BBR 仍能维持接近满带宽的吞吐，而 Cubic 在超过 0.1% 丢包率时就开始严重下降。</p>
+<p>但 v1 在更广泛的真实网络中很快暴露了严重问题。</p>
+<p><strong>BtlBw 估计偏高导致 inflight 膨胀。</strong> v1 用滑动窗口最大值过滤器估计 BtlBw——它记住过去若干轮次中观测到的最高带宽。问题在于：当多个流共享同一条链路时，某个流可能在其他流暂时退让（比如进入 ProbeRTT）时观测到一个偏高的带宽值。这个偏高的估计被最大值过滤器"锁定"，在后续多轮中持续使用。结果是：v1 发送的数据量超过了自己应得的公平份额，多余的数据堆在路由器缓冲区中——这就是 inflight 膨胀。</p>
+<p><strong>inflight 膨胀挤压 Cubic 流。</strong> v1 膨胀的 inflight 填满了缓冲区。Cubic 流看到缓冲区被占满后开始丢包，被迫反复减速。Hock 等人（2017）的实验测量表明，在深缓冲区场景下，单个 BBR v1 流可以占据 70% 以上的带宽，Cubic 流只能分到剩余部分。这不是暂时的不公平——只要 v1 的 BtlBw 估计持续偏高，这个挤压就会持续存在。</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>缓冲区使用量
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  │
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  │ ███████████████████████  ← BBR v1 inflight 膨胀
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>  │ ███████████████████████     填满了大部分缓冲区
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>  │ ██████                   ← Cubic 的空间被压缩
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>  │ ██████                      被迫频繁丢包和减速
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>  │─────────────────────────── 缓冲区上限
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>  │
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>  └──────────────────────→ 时间
+</span></code></pre></div>
+<p><strong>v1 的核心矛盾。</strong> BBR 的模型假设网络是"一条带宽固定的管道"——每个流可以独立测量 BtlBw 和 RTprop。但真实网络里有共享缓冲区、有竞争流、有动态变化的可用带宽。当模型的假设和现实不匹配时，最大值过滤器会系统性地高估带宽，导致行为偏离模型预期。</p>
+<p>v1 的问题不是"模型驱动"这个方向错了，而是第一个版本对真实网络的复杂性估计不足。它优美的理论模型在"干净"的环境（单流、固定带宽）中表现完美，但在多流竞争、缓冲区共享的互联网中暴露了严重的公平性缺陷。</p>
+<hr />
+<h2 id="223-v2-loss-tolerance-inflight">22.3 v2 的公平性修正：引入 loss tolerance 与 inflight 上限</h2>
+<p>BBR v2（Cardwell、Cheng 等人，2019）针对 v1 暴露的公平性问题做了一次关键的设计转向：<strong>不再完全无视丢包，开始给 inflight 设置显式的上限。</strong></p>
+<p>v2 的核心改变是引入了两个新的状态变量：</p>
+<p><strong>inflight_hi</strong>——inflight 的安全上界。当丢包发生时，v2 记录当时的 inflight 水位，并将其乘以 0.7 作为后续发送的上限参考。这意味着 v2 不再允许 inflight 无限膨胀——即使 BtlBw 估计偏高，inflight_hi 也会在丢包时把实际发送量拉回来。</p>
+<p><strong>inflight_lo</strong>——inflight 的保守下界。当连续多轮出现丢包时，inflight_lo 进一步降低，提供一个更保守的发送水位。</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>v1 的 cwnd 目标：  cwnd = cwnd_gain × BDP
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>                   （只看模型，不管丢包）
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>v2 的 cwnd 目标：  cwnd = min(cwnd_gain × BDP, inflight_hi)
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>                   （模型和丢包历史，取较小值）
+</span></code></pre></div>
+<p>这个 <code>min</code> 操作是 v2 最关键的一步。它意味着 v2 的发送量受到双重约束：模型给出理论上界，inflight_hi 给出经验安全边界。无论哪个更小，都以更小的那个为准。</p>
+<p>v2 还引入了丢包轮次追踪（<code>loss_event_count_in_round_</code>）——v1 完全不记录丢包历史，v2 开始跟踪"最近几轮有没有丢包"。这个信息被用来调整 inflight_hi 的更新策略：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>丢包时：inflight_hi = max(inflight_lo, inflight_hi × 0.7)
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>         → 每次丢包把上限削减 30%
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>无丢包时：inflight_hi += 1 MSS
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>         → 每轮缓慢恢复上限
+</span></code></pre></div>
+<p>这种"丢包时快速降、无丢包时缓慢升"的策略，和 AIMD 的精神异曲同工——只是作用对象从 cwnd 变成了 inflight_hi。v2 在"纯模型驱动"和"部分丢包感知"之间找到了一个折中点：它仍然用 BtlBw × RTprop 作为核心控制信号，但用丢包作为"模型可能出错"的安全阀。</p>
+<p>v2 还开始响应 ECN（Explicit Congestion Notification）信号：当 ACK 携带 ECN-CE 标记时，inflight_hi 削减 5%。ECN 比丢包更早反映拥塞——路由器在队列快满但还没丢包时就可以标记 ECN。v2 对 ECN 的响应比对丢包更温和（5% vs 30%），体现了"信号越早，反应越轻"的设计哲学。</p>
+<p>v2 的实际效果：inflight 膨胀明显减少，与 Cubic 共存时的公平性有了显著改善。在 v1 占据 70%+ 带宽的场景中，v2 把这个比例拉回到更合理的水平。</p>
+<p>但 v2 仍然有局限。</p>
+<p>第一，inflight_hi 的 0.7 衰减系数是经验性的选择。在某些极端场景下——比如缓冲区非常浅或丢包率波动剧烈——这个固定系数可能过于激进或过于保守。</p>
+<p>第二，ProbeBW 仍然使用 v1 的 8 相增益循环。这个循环的探测-排空行为是固定模式，缺乏对当前网络状态的精细感知——不管网络是否需要探测，都按固定周期执行。</p>
+<p>第三，ProbeRTT 仍然把 cwnd 降到 4 个 MSS——这在高带宽链路上意味着吞吐量骤降 99%+，持续 200ms。这个周期性的深度减速对延迟敏感的应用（如实时视频）影响很大。</p>
+<p>v2 的演进方向已经清晰：BBR 从"完全忽略丢包"回退到"有条件地关注丢包"。这不是倒退——这是模型和现实磨合的必然结果。v2 解决了 inflight 膨胀的核心问题，但 ProbeBW 的固定增益循环和 ProbeRTT 的过度激进仍是待修的短板。</p>
+<hr />
+<h2 id="224-v3-loss-based-bound-probe-rtt">22.4 v3 的收敛：loss-based bound 与 Probe-RTT 改进</h2>
+<p>BBR v3 是截至目前最成熟的版本。它延续了 v2"模型为主、丢包为辅"的方向，但在两个关键维度上做了深度改进：ProbeBW 的状态机精细化，以及丢包/ECN 响应的量化升级。</p>
+<p><strong>ProbeBW 从固定增益循环进化为四个明确的子状态。</strong></p>
+<p>v1/v2 的 ProbeBW 是一个机械的 8 相增益循环——不管网络状况如何，都按固定模式轮转探测和排空。v3 把这个固定模式拆解为四个有语义的子状态，每个子状态都有自己的进入条件和退出判据：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>ProbeBW 子状态（v3）：
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>  ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  │   DOWN   │────→│  CRUISE  │────→│  REFILL  │────→│    UP    │
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>  │ gain=0.75│     │ gain=1.0 │     │ gain=1.0 │     │ gain=1.25│
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>  │ 排空队列  │     │ 稳态巡航  │     │ 填充管道  │     │ 探测带宽  │
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>  └──────────┘     └──────────┘     └──────────┘     └──────────┘
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>       ↑                                                   │
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>       └───────────────────────────────────────────────────┘
+</span></code></pre></div>
+<p><strong>DOWN</strong>（pacing_gain = 0.75）：主动降低 inflight，释放路径上的排队。退出条件是 inflight 降到 BDP 以下，且至少持续 1 个 RTT。这个状态确保在下一次探测前，路径上没有残留的队列——干净的起点才能得到准确的测量。</p>
+<p><strong>CRUISE</strong>（pacing_gain = 1.0）：稳态发送，不主动探测也不排空。持续约 3 个 RTT。这个状态的存在是为了给其他流（尤其是 Cubic 流）留出调整窗口——如果 BBR 每个周期都在激进探测，Cubic 流没有机会恢复公平份额。</p>
+<p><strong>REFILL</strong>（pacing_gain = 1.0）：在探测前重新填充管道到 BDP 水平。持续 1 个 RTT。为什么需要这个状态？因为 DOWN 阶段把 inflight 压到了 BDP 以下，如果直接从低水位进入 UP 探测，探测的起点太低，容易低估带宽。REFILL 先把管道"灌满"，再启动探测。</p>
+<p><strong>UP</strong>（pacing_gain = 1.25）：以 1.25 倍 BtlBw 发送，探测带宽是否增加。持续 1 个 RTT。如果观测到更高的带宽，更新 BtlBw；如果没有，多余的数据进入缓冲区，随后的 DOWN 阶段会排空。</p>
+<p>这四个子状态比 v1/v2 的固定循环更有针对性。DOWN 确保干净起点，CRUISE 留出公平性空间，REFILL 保证探测精度，UP 执行实际探测。每个子状态的持续时间由网络状态决定（比如 DOWN 在 inflight 真正降到 BDP 以下时才退出），而不是像 v1 那样按固定的 RTT 轮数机械轮转。</p>
+<p><strong>loss-based bound：丢包重新进入决策，但方式与 Reno/Cubic 完全不同。</strong></p>
+<p>v3 引入了显式的丢包率阈值——默认 2%（<code>loss_thresh_ = 0.02</code>）。每一轮结束时，v3 计算本轮的丢包率：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>loss_rate = round_lost_bytes / (round_delivered_bytes + round_lost_bytes)
+</span></code></pre></div>
+<p>如果 loss_rate &gt; 2%，v3 认为"模型可能高估了可用带宽"，将 inflight_hi 乘以 beta_loss（0.9）：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>丢包率 &gt; 2%：inflight_hi *= 0.9（温和削减 10%）
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>丢包率 = 0%：inflight_hi += 2 MSS（缓慢探索增长）
+</span></code></pre></div>
+<p>这个设计与 Reno/Cubic 的丢包响应有本质区别。Reno 把每次丢包都当作"管道满了"的证据，直接砍半 cwnd。v3 做的是统计判断——只有当一轮中的丢包率超过阈值时才反应，个别的随机丢包不会触发减速。而且减速幅度（10%）远小于 Reno 的 50% 或 Cubic 的 30%。丢包在 v3 中不是"审判"，而是"校准信号"——它告诉 BBR"你的模型可能有点偏，微调一下"。</p>
+<p><strong>ECN 响应更加积极。</strong> v3 的 ECN 减速因子 beta_ecn = 0.85，比丢包更激进（15% vs 10%）。这看似反直觉——ECN 不是比丢包更早、更温和的信号吗？逻辑在于：ECN 标记意味着路由器队列已经接近满载但还没丢包，如果此时不果断减速，下一步就是丢包。v3 选择对 ECN 更积极地响应，以避免发展到丢包阶段。</p>
+<p><strong>ProbeRTT 改进。</strong> v1 的 ProbeRTT 把 cwnd 降到 4 个 MSS，在高带宽链路上这意味着吞吐量几乎归零。v3 的 ProbeRTT 更加温和——虽然仍然每 10 秒触发、持续 200ms，但降低的幅度小于 v1，减少了周期性吞吐骤降对应用的冲击。</p>
+<p>v3 的设计哲学可以总结为一句话：<strong>仍然以模型为主，但承认模型的不完美，用丢包率和 ECN 作为安全阀和校准工具。</strong> 如果说 v1 是"纯理想主义"，v2 是"开始向现实妥协"，v3 就是"在理想和现实之间找到了一个可工作的平衡点"。BBR 经过三代演进，已经从"完全忽视丢包"收敛到"以模型为主、以统计丢包率和 ECN 为辅"的混合策略。</p>
+<hr />
+<h2 id="225-bbr-cubic-reno">22.5 算法共存的真实世界：BBR / Cubic / Reno 混跑时谁赢谁输</h2>
+<p>真实的互联网不是单一算法的实验室。同一条链路上，BBR 流、Cubic 流、Reno 流可能同时存在。它们用完全不同的信号来决定发送速率——BBR 看带宽和时延模型，Cubic 和 Reno 看丢包。当这些"说不同语言"的算法在同一条管道里竞争时，会发生什么？</p>
+<p>这个问题的答案取决于至少三个维度：缓冲区深度、RTT 差异、流数量和生命周期。</p>
+<p><strong>缓冲区深度是最关键的变量。</strong></p>
+<p>在深缓冲区场景下（缓冲区 &gt;&gt; BDP），Cubic/Reno 会把缓冲区填满——它们只有在丢包时才减速，而深缓冲区要很久才丢包。BBR 的行为取决于版本：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>深缓冲区（缓冲区 ≈ 5 × BDP）：
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>BBR v1 vs Cubic：
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>  v1 的 BtlBw 估计偏高 → inflight 膨胀 → 填满缓冲区
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>  → Cubic 被迫看到更多丢包 → 减速
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>  结果：v1 占 70%+ 带宽，Cubic 被挤压
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>BBR v2/v3 vs Cubic：
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>  inflight_hi 限制了膨胀 → inflight 接近 BDP
+</span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>  → 但 Cubic 仍然填满缓冲区 → BBR 的 RTprop 估计被排队时延污染
+</span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>  结果：更公平，但 Cubic 仍可能略占优势
+</span></code></pre></div>
+<p>在浅缓冲区场景下（缓冲区 &lt; BDP），局面反转。Cubic/Reno 频繁触发丢包，cwnd 反复被砍半，无法充分利用带宽。BBR 由于不依赖丢包信号，受到的影响小得多。</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>浅缓冲区（缓冲区 ≈ 0.5 × BDP）：
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>BBR v3 vs Cubic：
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>  Cubic 频繁丢包 → 反复减窗 → 吞吐量波动大
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>  BBR 丢包率 &lt; 2% 时不减速 → 吞吐量更稳定
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>  结果：BBR 占优，Cubic 表现不佳
+</span></code></pre></div>
+<p><strong>RTT 差异放大了不公平。</strong></p>
+<p>Reno 的公平性对 RTT 高度敏感——RTT 短的流增长快（每 RTT 加 1 MSS），RTT 长的流增长慢。两条 Reno 流的吞吐量比约为 RTT 比的平方的倒数——RTT 差两倍，带宽差四倍。</p>
+<p>Cubic 对 RTT 更公平——它的增长以绝对时间而非 RTT 为自变量——但仍然不完全独立于 RTT。</p>
+<p>BBR 的带宽估计理论上与 RTT 无关——BtlBw 是对传输速率的直接测量。但实际上，RTT 影响了 BBR 探测的频率和精度。长 RTT 的 BBR 流探测周期更长，对带宽变化的响应更慢。当短 RTT 和长 RTT 的 BBR 流竞争时，短 RTT 的流在探测-调整循环中有速度优势。</p>
+<p><strong>流数量和生命周期增加了不确定性。</strong></p>
+<p>实验室测试通常用几条长寿命流来评估公平性。但真实互联网上，大量短流（网页请求、API 调用）和少数长流（视频流、大文件下载）混合存在。短流在慢启动阶段就结束了，永远不进入稳态——它们的行为由慢启动策略决定，和稳态公平性几乎无关。长流之间的竞争才是公平性的主战场，但长流的数量和进出时间不断变化，使得稳态分析只是一种近似。</p>
+<p><strong>运营商的 AQM（主动队列管理）改变了游戏规则。</strong></p>
+<p>部分运营商在路由器上部署了 AQM 策略（如 CoDel、PIE），在队列还没满时就主动丢包或标记 ECN。AQM 把"丢包信号"从"缓冲区满了"变成了"队列开始积压了"——这让 Cubic/Reno 的反应更及时，也让 BBR 的 ECN 响应更有用。在有 AQM 的网络中，所有算法的行为都更接近"理想模型"，公平性也更好。</p>
+<p>综合来看，算法共存不是"谁更先进"的单维问题，而是一个多维度的系统性挑战：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>场景              BBR（v3）        Cubic          Reno
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>────────────────────────────────────────────────────────
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>深缓冲区          较公平           占优            尚可
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>浅缓冲区          占优             波动大          波动大
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>高随机丢包        稳定             性能下降        性能急剧下降
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>有 AQM           良好             良好            良好
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>短 RTT 竞争       略占优           尚可            明显吃亏
+</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>长 RTT 竞争       更公平           较公平          不公平
+</span></code></pre></div>
+<p>没有一种算法在所有场景下都"赢"。这不是因为算法不够好，而是因为不同的控制哲学在不同的网络条件下各有优劣。这也是为什么 BBR 三代演进的核心驱动力始终是同一个问题：<strong>模型驱动的算法如何在一个丢包驱动占主导的互联网里存活并公平竞争。</strong></p>
+<hr />
+<h2 id="226">22.6 协议库为什么不能只押注一种答案</h2>
+<p>三章走下来——Reno 建立了丢包驱动的基线，Cubic 在高 BDP 场景下将其推向极致，BBR 三代则在模型驱动与现实妥协之间反复校准——可以得出一个经过充分论证的结论：<strong>没有一种拥塞控制算法在所有场景下都是最优的。</strong></p>
+<p>这不是客套话。Reno 在数据中心内部（BDP 极小、丢包率极低）仍然够用，简单可预测。Cubic 在高 BDP 有线链路上表现卓越，统治了互联网近二十年。BBR 在浅缓冲区和随机丢包场景下有结构性优势，但在与 Cubic 的公平性上仍在进化。</p>
+<p>对于一个面向真实世界的协议库来说，这意味着三件事。</p>
+<p>第一，<strong>必须支持多种算法共存</strong>。不同的连接面对不同的网络环境——数据中心内部的短连接和跨洲际的视频流，不应该使用同一种算法。连接级别的算法选择不是"锦上添花"，而是工程必需。</p>
+<p>第二，<strong>必须为新算法的接入保留扩展空间</strong>。BBR 从 v1 到 v3 的演进表明，拥塞控制算法的优化远没有结束。一个只能硬编码三种算法的协议库，在 v4、v5 或全新算法出现时就需要大改架构。统一的拥塞控制接口和工厂模式不是过度设计，而是对"算法会持续进化"这个工程现实的直接回应。</p>
+<p>第三，<strong>必须有验证手段来确认算法在不同场景下的行为</strong>。仅仅"实现了 BBR v3"不够——必须能证明它在深缓冲区不会挤压 Cubic，在浅缓冲区不会被 Cubic 抢走带宽，在高随机丢包下不会频繁减速。没有仿真和基准测试的拥塞控制实现，是不可信的。</p>
+<p>BBR 三代的演进故事本身就是这个结论最好的证据。v1 的理论模型优美到令人赞叹，但它在真实网络中制造了严重的公平性问题。v2 开始向现实妥协，引入了丢包感知。v3 进一步收敛，把丢包和 ECN 重新纳入决策框架——但不是回到 Reno 的"丢包即审判"，而是作为"模型校准信号"。这条演进路径说明：拥塞控制不存在一次性设计成功的银弹，只有持续的假设-验证-修正循环。</p>
+<p>一个面向真实世界的协议库，必须同时容纳这些互相矛盾的控制哲学——不是因为选不出最好的，而是因为"最好的"取决于这条连接此刻面对的网络条件，而网络条件在连接建立之前无法预知。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="页脚" >
+        
+          
+          <a href="../21_cubic_and_high_bdp/" class="md-footer__link md-footer__link--prev" aria-label="上一页: 21. 立方的野心: Cubic 与高 BDP 网络的攻防">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                上一页
+              </span>
+              <div class="md-ellipsis">
+                21. 立方的野心: Cubic 与高 BDP 网络的攻防
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../23_bbr_in_quicx/" class="md-footer__link md-footer__link--next" aria-label="下一页: 23. 速度的手术台: quicX 中拥塞控制的工程实践">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                下一页
+              </span>
+              <div class="md-ellipsis">
+                23. 速度的手术台: quicX 中拥塞控制的工程实践
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.indexes", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

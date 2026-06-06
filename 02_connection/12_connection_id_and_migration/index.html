@@ -1,0 +1,2407 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="从协议设计到 quicX 网络库实践">
+      
+      
+        <meta name="author" content="ekko">
+      
+      
+      
+        <link rel="prev" href="../11_connection_state_and_params/">
+      
+      
+        <link rel="next" href="../../03_reliable/00_intro/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+    
+    
+      
+        <title>12. 会飞的连接: Connection ID 与路径迁移 - 深入解析 QUIC 与 HTTP/3</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#12-connection-id" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-header__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            深入解析 QUIC 与 HTTP/3
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              12. 会飞的连接: Connection ID 与路径迁移
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-nav__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    深入解析 QUIC 与 HTTP/3
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    序言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷一: 基石时代 (基础设施)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷一: 基石时代 (基础设施)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    0. 卷一导读：在用户态重建网络世界的代价
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/01_memory_pool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. 内存的七巧板: 连接级内存池的设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/02_zero_copy_buffer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. 拷贝的艺术: 零拷贝 Buffer 的生存哲学
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/03_network_io_abstraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. 管道与枢纽: 网络 IO 的架构抽象
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/04_thread_model_and_lockfree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. 打破全局锁: One-Loop-Per-Thread 的无锁演进
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/05_async_timer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. 时空的刻度: 高效定时器与事件循环的融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二导读：打破四元组枷锁，重建连接的定义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_packet_and_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. 万物开端: QUIC Packet 解剖与连接世界地图
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_initial_keys_and_crypto_frame/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. 公开的秘密: Initial 密钥与 CRYPTO Frame 的起步逻辑
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_handshake_and_tls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. 破冰之握: 连接建立与 TLS 融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_zero_rtt_and_session_resume/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. 零等待的奇迹: 0-RTT 与会话恢复
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_address_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. 护城河: 地址验证与防放大攻击
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_connection_state_and_params/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. 连接的生死簿: 状态机与传输参数协商
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. 会飞的连接: Connection ID 与路径迁移
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. 会飞的连接: Connection ID 与路径迁移
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#121-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.1 四元组的绳索：TCP 为什么很难带着连接一起搬家
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#122-connection-id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.2 一张新的身份证：Connection ID 到底替代了什么
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#123-nat-rebinding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.3 路变了，连接不能乱：NAT Rebinding 与主动迁移的区别
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#124-path_challenge-path_response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.4 先敲门再进屋：PATH_CHALLENGE 与 PATH_RESPONSE 如何建立新路径信任
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#125-quicx-cid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.5 quicX 的飞行控制：CID 池、路径管理与迁移切换如何落地
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#126" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.6 身份与路径的分离，是一切的起点
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    重构可靠传输：从包级确认到语义重传
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/13_why_quic_rebuilds_reliability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. 可靠性的代价: QUIC 为什么不再照搬 TCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/14_pn_space_and_ack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. ACK 的艺术: 序列号空间与确认边界
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/15_loss_detection_and_pto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. 消失与追踪: 丢包探测与 PTO 幽灵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/16_retransmission_semantics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. 重传的边界: 重发的不是 Packet, 而是语义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/17_packet_builder_and_encryption/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. 发包管线: PacketBuilder 与加密层调度
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/18_timer_and_lifecycle_war_story/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. 刺刀见红: 异步定时器与连接生命周期的暗战
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    拥塞控制：网络管道的物理学与控制论
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/19_rtt_and_cwnd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. 管道的容量: RTT 测量与拥塞窗口的第一原理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/20_reno_and_aimd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. 丢包即信号: Reno 与 AIMD 的经典控制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/21_cubic_and_high_bdp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. 立方的野心: Cubic 与高 BDP 网络的攻防
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/22_bbr_evolution_and_coexistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. 模型的革命: BBR 三代演进与算法共存
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/23_bbr_in_quicx/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    23. 速度的手术台: quicX 中拥塞控制的工程实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    多路复用与流控：并发的秩序与背压机制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/24_multiplexing_history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    24. 从队头阻塞到传输层并发: Stream 为什么是 QUIC 的另一半身体
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/25_stream_state_machine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    25. 流的诞生与终结: 发送与接收状态机
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/26_flow_control_windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    26. 双层流控与背压: 额度如何限制流，闸门关上后又如何打开
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/27_blocked_and_max_frames/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    27. quicX 的 Stream 管理: 从 pending 到 manager 的工程全景
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    抵达彼岸: HTTP/3 与乱序世界的契约
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/28_http3_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    28. 换一张地图: HTTP/3 的帧体系与控制面
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/29_http3_mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    29. 重新映射: 从 QUIC 流到请求与响应
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/30_qpack_compression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    30. QPACK: 乱序世界里的头压缩引擎
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/31_http3_connection_lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31. 一条 HTTP/3 连接的一生
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷七: 生产级修养
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷七: 生产级修养
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    生产级修养：从可用网络协议到工业级基础设施
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/32_metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32. 透明的眼睛: Metrics、日志上下文与可观测性基座
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/33_qlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33. 黑匣子: Qlog 可观测性实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/34_protocol_upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34. 通天塔的阶梯: HTTP 协议协商与版本升级
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/35_interop_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35. 试炼场: 与 Nginx / Quiche 的互联互通
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#121-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.1 四元组的绳索：TCP 为什么很难带着连接一起搬家
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#122-connection-id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.2 一张新的身份证：Connection ID 到底替代了什么
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#123-nat-rebinding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.3 路变了，连接不能乱：NAT Rebinding 与主动迁移的区别
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#124-path_challenge-path_response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.4 先敲门再进屋：PATH_CHALLENGE 与 PATH_RESPONSE 如何建立新路径信任
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#125-quicx-cid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.5 quicX 的飞行控制：CID 池、路径管理与迁移切换如何落地
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#126" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.6 身份与路径的分离，是一切的起点
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="12-connection-id">12. 会飞的连接：Connection ID 与路径迁移</h1>
+<p>到目前为止，我们让一个 QUIC 连接经历了从无到有的全过程——握手点火、密钥安装、参数协商、状态机推进。连接"活"了。但"活着"就够了吗？</p>
+<p>现实世界的网络不是实验室里的稳定链路。手机从 WiFi 走到 4G，笔记本从会议室搬到咖啡厅，NAT 路由器悄悄换了一个映射端口——每一次网络环境的变化，都在试图杀死你的连接。TCP 对此束手无策，因为它把连接的身份绑死在 IP 地址上。QUIC 的回答是：<strong>连接的身份不该由路径决定</strong>。这一章就是讲 QUIC 是怎么做到这件事的——用 Connection ID 替代四元组作为连接身份，用路径验证确保迁移安全，用 CID 轮换保护用户隐私。一个 QUIC 连接，不仅要活着，还要能飞。</p>
+<hr />
+<h2 id="121-tcp">12.1 四元组的绳索：TCP 为什么很难带着连接一起搬家</h2>
+<p>一个连接建立了、活着了、甚至协商好了一切参数——但如果网络环境一变，它就断了，那这个连接终究只是温室里的花。<strong>一个已经建立的连接，能不能在网络环境变化时依然保持"活着"？</strong> 这是 QUIC 必须回答的问题。</p>
+<p>在 TCP 的世界里，答案通常是否定的。</p>
+<p>想想你正在用手机刷新闻 App 的场景。你在家连着 WiFi，TCP 连接已经建立，数据正在流畅地传输。突然你走出家门，手机自动从 WiFi 切换到了 4G 网络——这一瞬间发生了什么？</p>
+<p>TCP 连接<strong>断开</strong>了。</p>
+<p>原因很简单：TCP 连接是绑定在<strong>五元组</strong>（源 IP + 源端口 + 目标 IP + 目标端口 + 协议）上的——日常简称四元组，因为协议号固定为 TCP。当你的手机从 WiFi 切换到 4G，源 IP 地址从 WiFi 的局域网 IP 变成了 4G 的公网 IP——四元组变了，TCP 连接无法继续维持。你必须重新建立 TCP 连接，甚至重新走一遍 TLS 握手。</p>
+<p>这个过程对用户体验的影响是实实在在的：页面加载会卡顿，视频会缓冲，App 可能需要重新刷新。在移动网络日益普及的今天，这种"网络一切换、连接就断裂"的体验越来越难以接受。</p>
+<p><strong>NAT 重绑定</strong>（NAT rebinding）的情况更隐蔽。你的手机连着 WiFi，WiFi 路由器有一个 NAT。TCP 连接建立后，如果路由器因为某些原因（比如超时、DHCP 租约到期）给手机分配了一个新的公网映射端口，原来的 TCP 连接就可能出问题—— NAT 认为这个连接已经"过期"了，把新流量导向了新的端口，而你的手机还在向旧端口发数据。</p>
+<p>这就是 TCP 连接的脆弱性：<strong>它把"连接身份"和"路径信息"死死绑在一起。</strong> 路径一变化，连接就得重来。</p>
+<p>但现代移动互联网对"连接不死"的需求越来越强烈。用户希望视频不中断、语音通话不中断、文件传输不中断——即使网络环境发生了变化。这不是"锦上添花"，而是<strong>现实需求</strong>。</p>
+<p>QUIC 正是为了回应这个需求而设计的。QUIC 从一开始就把"连接身份"从"路径信息"中解耦了出来——<strong>一个 QUIC 连接不再绑定在某个 IP 地址上，而是绑定在 Connection ID 上</strong>。当路径变化时，只要 Connection ID 不变，连接就可以继续维持。</p>
+<p>这就是 QUIC 真正的革命性所在：<strong>它不是在 UDP 上模拟 TCP，而是在重新定义"连接"本身。</strong></p>
+<hr />
+<h2 id="122-connection-id">12.2 一张新的身份证：Connection ID 到底替代了什么</h2>
+<p>QUIC 把"连接身份"从"路径信息"中解耦了出来，靠的就是 <strong>Connection ID</strong>（连接 ID，简称 CID）。但 CID 不是一个简单的标签，它的设计承担了远超"给连接编个号"的职责。</p>
+<p><strong>先把 CID 的基本规格摆出来。</strong> RFC 9000 规定，Connection ID 的长度在 <strong>0 到 20 字节</strong>之间，由各端自行决定。0 字节意味着"不使用 CID"——在不需要迁移和路由的场景下，这能省下包头开销。但对于需要迁移能力或者需要做负载均衡路由的场景，CID 通常在 4 到 20 字节之间。quicX 的实现中，CID 长度的上下界分别是 <code>kMinCidLength = 4</code> 和 <code>kMaxCidLength = 20</code>。</p>
+<p>让我们从建连过程说起，把 DCID 和 SCID 的真实语义讲准确。当客户端发送第一个 Initial 包时，它需要填写 <strong>Destination Connection ID</strong>（DCID）。但此时客户端根本还不知道服务端的 CID 是什么——它怎么填？答案是：<strong>随机生成一个临时的 DCID</strong>。这个临时 DCID 的作用不是标识客户端自己，而是让服务端在还没有真正分配 CID 之前，有一个可以关联到这次连接尝试的凭据。它还有一个更关键的用途：<strong>Initial 密钥的派生依赖这个 DCID</strong>（正如第 7 章讲过的）。</p>
+<p>服务端收到 Initial 后，会生成自己<strong>真正的 Connection ID</strong>，通过 SCID（Source Connection ID）字段告诉客户端。从此之后，客户端发包时的 DCID 就改用服务端给的这个 SCID——那个临时随机 DCID 完成了使命，可以"退休"了。同时，服务端也会在自己的响应中把客户端最初 Initial 里的 SCID 记住，作为后续包中的 DCID。</p>
+<p><strong>一旦握手完成，连接的身份就不再是四元组，而是这两端各自持有的 Connection ID。</strong></p>
+<p>这带来了三个根本性的变化：</p>
+<p><strong>第一，路径变化时，只要 Connection ID 不变，连接就还是同一个。</strong> 即使手机从 WiFi 切到 4G，IP 地址变了，只要双方还用正确的 Connection ID 通信，连接就可以延续。</p>
+<p><strong>第二，服务器可以更灵活地做负载均衡。</strong> 传统 TCP 做负载均衡只能依赖四元组（比如源 IP 哈希），但 QUIC 可以在 Connection ID 里编码路由信息——比如把后端服务器的编号嵌入 CID，让负载均衡器只需要读取 CID 就能做出转发决策，无需维护连接状态表。</p>
+<p><strong>第三，CID 支持轮换，为隐私保护提供了基础。</strong> 如果一条连接从头到尾只用一个 CID，那么沿途的观察者就能轻松追踪这条连接——即使 IP 地址变了，CID 不变就暴露了"这是同一条连接"。QUIC 因此设计了 CID 的轮换机制。</p>
+<p>CID 的轮换依赖两个帧：<strong><code>NEW_CONNECTION_ID</code></strong> 和 <strong><code>RETIRE_CONNECTION_ID</code></strong>。</p>
+<p><code>NEW_CONNECTION_ID</code> 帧是一端向对端"发放新 CID"的方式。它包含三个关键字段：
+- <strong><code>sequence_number</code></strong>：这个 CID 的序列号，用来区分先后关系
+- <strong><code>retire_prior_to</code></strong>：一个"退休水位线"——序列号小于这个值的 CID 都应该被退休
+- <strong><code>stateless_reset_token</code></strong>：一个 128 位（16 字节）的令牌，用于无状态重置——当一端丢失了连接状态后，它可以用这个令牌来"无状态地"终止连接</p>
+<p><code>RETIRE_CONNECTION_ID</code> 帧则是一端通知对端"我不再使用这个序列号的 CID 了"。对端收到后可以回收资源。</p>
+<p>这套发放-退休机制让 CID 像"一叠名片"：手里始终预备着几张，用完了可以换新的，旧的可以丢掉。这种设计既服务了迁移（换路径时启用新 CID），也服务了隐私（定期轮换 CID 让观察者无法关联前后流量），还服务了工程健壮性（<code>retire_prior_to</code> 可以一次性批量退休过时的 CID）。</p>
+<p>这就是为什么我们说 <strong>Connection ID 是 QUIC 连接身份设计的核心</strong>。没有 CID，QUIC 的迁移能力、负载均衡路由、隐私保护都无从谈起。它不是装饰品，而是 QUIC 能"让连接飞起来"的基础设施。</p>
+<hr />
+<h2 id="123-nat-rebinding">12.3 路变了，连接不能乱：NAT Rebinding 与主动迁移的区别</h2>
+<p>"路径变化"听起来是一个简单的概念，但一旦落到现实网络环境中，它至少会分裂成两种截然不同的情况：<strong>NAT 重绑定</strong>（NAT rebinding）和<strong>主动迁移</strong>（active migration）。把它们混为一谈，是很多初学者在理解 QUIC 迁移时犯的第一个错误。</p>
+<p><strong>NAT 重绑定</strong> 是一个隐蔽的场景。你的设备一直在用同一个 WiFi，IP 地址没变，但 NAT 路由器给你分配了一个新的公网端口。原因可能是路由器重启、NAT 映射表超时、或者运营商级 NAT（CGN）的端口轮换。在这种"悄悄变化"的情况下，你的 TCP 连接可能突然就不好使了——你这边还正常发着数据，但那头的服务器发现"咦，这个端口怎么突然变成了另一个？"</p>
+<p>TCP 面对这种情况很尴尬。它不知道这是"同一个连接换了个端口"，还是"一个全新的连接"。通常它会直接把连接 reset 掉，因为四元组变了嘛。</p>
+<p>QUIC 对 NAT rebinding 的处理要聪明得多。当服务端收到一个包，DCID 匹配某条现有连接，但源地址（IP + 端口）和之前不一样时，服务端不会立刻丢弃这个包，而是开始一轮路径验证——向这个新地址发送 PATH_CHALLENGE，确认对端真的在那里。如果验证通过，服务端就把连接的对端地址更新为新地址，一切继续；如果验证失败，包被丢弃，原路径不受影响。</p>
+<p><strong>主动迁移</strong> 则是一个更明确的动作。比如你的手机检测到 WiFi 信号变弱了，主动切换到 4G；或者你在电脑上暂停了视频，从卧室走到客厅，笔记本自动从 WiFi 切到了有线网。这种场景下，路径变化是客户端主动触发的，目的是保持连接的连续性。</p>
+<p>这两种场景的关键区别在于<strong>谁知道发生了什么</strong>：</p>
+<ul>
+<li><strong>NAT rebinding 是被动的</strong>——客户端自己可能完全不知道 NAT 给自己换了端口，是服务端先观察到"对端地址变了"</li>
+<li><strong>主动迁移是客户端发起的</strong>——客户端明确知道自己在换路，主动在新路径上发起通信</li>
+</ul>
+<p>这里有一个重要的协议控制点：<strong><code>disable_active_migration</code> 传输参数</strong>。RFC 9000 §9 规定，端点可以在握手期间通过这个传输参数声明自己不支持主动迁移。如果服务端设置了 <code>disable_active_migration</code>，客户端就不应该主动发起路径迁移。但即便如此，<strong>NAT rebinding 仍然可能发生</strong>——因为它不是客户端主动触发的，而是网络中间设备的行为。所以，即使连接禁止了主动迁移，服务端仍然需要具备处理 NAT rebinding 的能力。</p>
+<p>不管哪种场景，有一个共同的原则：<strong>路径变化后，连接不能立刻无条件信任新路径</strong>。</p>
+<p>为什么？因为新路径可能存在安全问题。攻击者可能伪造一个数据包，声称来自另一个地址，试图把连接"劫持"到自己控制的路径上——这样服务端的后续数据就会被发送到攻击者的地址，造成信息泄露或流量反射攻击。QUIC 必须验证"换了路径的这个连接，确实还是原来的那个连接"。</p>
+<hr />
+<h2 id="124-path_challenge-path_response">12.4 先敲门再进屋：PATH_CHALLENGE 与 PATH_RESPONSE 如何建立新路径信任</h2>
+<p>如果一个 QUIC 连接要在新路径上继续通信，它不能一声不响地就直接发数据——它必须先"敲敲门"，确认这条新路径真的能走通、对端真的在另一头。</p>
+<p>这就是 <strong>PATH_CHALLENGE</strong> 和 <strong>PATH_RESPONSE</strong> 的作用。</p>
+<p>具体流程是这样的：</p>
+<p>假设客户端想从 WiFi 切换到 4G。它不会立刻把应用数据发到 4G 上，而是先在 4G 路径上发一个 <strong>PATH_CHALLENGE</strong> 帧。RFC 9000 §19.17 规定，这个帧包含精确 <strong>8 字节的随机数据</strong>——不多不少，刚好够证明"我确实能通过这条路径和你说话"。</p>
+<p>服务端收到这个 PATH_CHALLENGE 后，必须在<strong>同一个路径上</strong>回复一个 <strong>PATH_RESPONSE</strong> 帧，把客户端发来的 8 字节数据<strong>原封不动地</strong>还回去。客户端收到 PATH_RESPONSE 后，对比数据是否一致——如果一致，就知道："这条新路径确实能通，而且对方确实是我的服务端——因为它能收到我的 CHALLENGE 并正确回送了我的随机数据。"</p>
+<p>这个过程和第 10 章讲过的地址验证有着相同的信任哲学，但回答的问题不同。地址验证回答的是"你是不是真的站在这个源地址上"——是在<strong>连接尚未建立时</strong>防止放大攻击。路径验证回答的是"换了地址之后，这个包是不是还来自原来那个连接"——是在<strong>连接已经建立后</strong>防止路径劫持。共享的核心理念是：<strong>不能仅凭一个数据包的源地址就信任它</strong>。</p>
+<p><strong>路径验证期间的防放大保护。</strong> 在新路径被验证之前，端点面临一个两难局面：不响应新路径上的包就没法完成验证，但如果敞开了发数据，又可能被攻击者利用来做放大攻击——攻击者伪造一个"新地址"让服务端往那个地址倾倒大量数据。RFC 9000 §9.3 对此有明确规定：<strong>在路径验证完成之前，端点在新路径上发送的数据不得超过接收到的数据量的 3 倍。</strong> 这和第 10 章握手期的防放大限制遵循完全相同的原则——"收到多少才能回多少"。</p>
+<p><strong>迁移时为什么要换 CID。</strong> RFC 9000 §9.5 规定了一条重要的隐私保护规则：迁移到新路径时，端点<strong>应该</strong>使用一个新的 Connection ID。为什么？想象一下，如果客户端从 WiFi（IP-A）迁移到 4G（IP-B），但始终使用同一个 CID，那么沿途的网络观察者就能轻松关联这两条路径的流量——"IP-A 和 IP-B 用的是同一个 CID，说明是同一条连接，同一个用户"。换一个新的 CID，就切断了这种关联。这也是为什么 12.2 节讲的 CID 发放-退休机制如此重要——它为每次迁移储备了"新名片"。</p>
+<p>路径验证还有一个重要作用：<strong>防止迁移被滥用成攻击入口</strong>。如果没有任何验证机制，攻击者可能伪造一个从"假地址"发来的包，诱骗服务端把连接"迁移"到攻击者控制的路径上，后续服务端的数据就全部流向了攻击者。QUIC 的路径验证机制确保了：只有真正能在新路径上完成 CHALLENGE-RESPONSE 往返的一端，才会被信任。</p>
+<p>在实现层面，PATH_CHALLENGE/PATH_RESPONSE 不仅仅是一次性的"探测"。路径验证可能失败（超时、对端无响应），也可能需要重试。quicX 在 <code>PathManager</code> 中实现了带指数退避的重试机制：初始延迟 100ms，每次翻倍，最大延迟 2000ms，最多重试 5 次。如果 5 次都失败了，这条候选路径就被判定为不可用，迁移回退到原路径。</p>
+<hr />
+<h2 id="125-quicx-cid">12.5 quicX 的飞行控制：CID 池、路径管理与迁移切换如何落地</h2>
+<p>理解了协议层面的 Connection ID 和路径迁移机制，我们来看看 quicX 是怎么在代码里实现这套"让连接飞起来"的能力的。</p>
+<p>quicX 的迁移实现涉及三个核心模块的协作：<strong>ConnectionIDManager</strong>（CID 底层管理）、<strong>ConnectionIDCoordinator</strong>（CID 协调器）、和 <strong>PathManager</strong>（路径管理器）。注意这里<strong>没有</strong>一个独立的"迁移控制器"——迁移的协调逻辑直接集成在 <code>PathManager</code> 中，因为路径变化和迁移决策天然是同一件事的两个面。</p>
+<p>先看 <strong>CID 管理的两层架构</strong>。</p>
+<p>底层的 <code>ConnectionIDManager</code> 负责单侧（本端或对端）CID 池的增删查：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">ConnectionIDManager</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">public</span><span class="o">:</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="n">ConnectionID</span><span class="w"> </span><span class="n">Generator</span><span class="p">();</span><span class="w">              </span><span class="c1">// 生成新 CID</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="n">ConnectionID</span><span class="o">&amp;</span><span class="w"> </span><span class="nf">GetCurrentID</span><span class="p">();</span><span class="w">          </span><span class="c1">// 获取当前活跃 CID</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="nf">RetireIDBySequence</span><span class="p">(</span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">seq</span><span class="p">);</span><span class="w"> </span><span class="c1">// 按序列号退休 CID</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="nf">AddID</span><span class="p">(</span><span class="n">ConnectionID</span><span class="o">&amp;</span><span class="w"> </span><span class="n">id</span><span class="p">);</span><span class="w">          </span><span class="c1">// 加入新 CID</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="nf">UseNextID</span><span class="p">();</span><span class="w">                      </span><span class="c1">// 切换到下一个 CID</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="nf">GetAvailableIDCount</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="p">;</span><span class="w">    </span><span class="c1">// 池中还剩几个可用 CID</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="k">private</span><span class="o">:</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="n">ConnectionID</span><span class="w"> </span><span class="n">cur_id_</span><span class="p">;</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">cur_sequence_number_</span><span class="p">;</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">uint64_t</span><span class="p">,</span><span class="w"> </span><span class="n">ConnectionID</span><span class="o">&gt;</span><span class="w"> </span><span class="n">sequence_cid_map_</span><span class="p">;</span><span class="w"> </span><span class="c1">// 序列号 -&gt; CID 映射</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="p">};</span>
+</span></code></pre></div>
+<p>它用一个 <code>std::map&lt;uint64_t, ConnectionID&gt;</code> 来维护 CID 池——key 是序列号，value 是 CID。<code>UseNextID()</code> 会从 map 中取出下一个序列号更大的 CID 作为当前活跃 CID，旧的 CID 等待被退休。</p>
+<p>上层的 <code>ConnectionIDCoordinator</code> 则负责协调本端和对端的 CID 管理器，并处理 CID 的发放和回收：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">ConnectionIDCoordinator</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">public</span><span class="o">:</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">CheckAndReplenishLocalCIDPool</span><span class="p">();</span><span class="w">  </span><span class="c1">// 检查并补充本端 CID 池</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="nf">RotateRemoteConnectionID</span><span class="p">();</span><span class="w">       </span><span class="c1">// 迁移后轮换对端 CID</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">SetPeerActiveConnectionIDLimit</span><span class="p">(</span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">limit</span><span class="p">);</span><span class="w"> </span><span class="c1">// 设置对端 CID 上限</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="k">private</span><span class="o">:</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">ConnectionIDManager</span><span class="o">&gt;</span><span class="w"> </span><span class="n">local_conn_id_manager_</span><span class="p">;</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">ConnectionIDManager</span><span class="o">&gt;</span><span class="w"> </span><span class="n">remote_conn_id_manager_</span><span class="p">;</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">kMinLocalCIDPoolSize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span><span class="w">  </span><span class="c1">// 池中至少保留 3 个</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">kMaxLocalCIDPoolSize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8</span><span class="p">;</span><span class="w">  </span><span class="c1">// 最多生成 8 个</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">peer_active_cid_limit_</span><span class="p">{</span><span class="mi">2</span><span class="p">};</span><span class="w">  </span><span class="c1">// RFC 9000 默认值为 2</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="p">};</span>
+</span></code></pre></div>
+<p><code>CheckAndReplenishLocalCIDPool()</code> 是一个关键方法：当本端 CID 池中的可用 CID 少于 3 个时，它会自动生成新的 CID 并通过 <code>NEW_CONNECTION_ID</code> 帧发给对端。<code>peer_active_cid_limit_</code> 来自对端的 <code>active_connection_id_limit</code> 传输参数——对端最多愿意同时持有几个 CID。quicX 不会发放超过这个数量的 CID。</p>
+<p>再看 <strong>PathManager</strong>——它是迁移的真正指挥中心：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">PathManager</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">public</span><span class="o">:</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="c1">// 路径验证</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">StartPathValidationProbe</span><span class="p">();</span><span class="w">       </span><span class="c1">// 启动 PATH_CHALLENGE 探测</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">OnPathResponse</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="kt">uint8_t</span><span class="o">*</span><span class="w"> </span><span class="n">data</span><span class="p">);</span><span class="w">   </span><span class="c1">// 处理 PATH_RESPONSE</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">OnPathChallenge</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="kt">uint8_t</span><span class="o">*</span><span class="w"> </span><span class="n">data</span><span class="p">,</span><span class="w">   </span><span class="c1">// 处理收到的 PATH_CHALLENGE</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">                         </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">IFrame</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">response_frame</span><span class="p">);</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="c1">// 被动迁移（NAT rebinding）</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">OnObservedPeerAddress</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Address</span><span class="o">&amp;</span><span class="w"> </span><span class="n">addr</span><span class="p">);</span><span class="w">  </span><span class="c1">// 发现对端地址变化</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="c1">// 主动迁移</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">    </span><span class="n">MigrationResult</span><span class="w"> </span><span class="nf">InitiateMigrationToAddress</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Address</span><span class="o">&amp;</span><span class="w"> </span><span class="n">local_addr</span><span class="p">);</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="k">private</span><span class="o">:</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">    </span><span class="n">ConnectionIDCoordinator</span><span class="o">&amp;</span><span class="w"> </span><span class="n">cid_coordinator_</span><span class="p">;</span><span class="w">  </span><span class="c1">// 协调 CID 轮换</span>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">    </span><span class="n">Address</span><span class="w"> </span><span class="n">candidate_peer_addr_</span><span class="p">;</span><span class="w">               </span><span class="c1">// 候选对端地址</span>
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">    </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">pending_path_challenge_data_</span><span class="p">[</span><span class="mi">8</span><span class="p">]{</span><span class="mi">0</span><span class="p">};</span><span class="w"> </span><span class="c1">// 待验证的 8 字节随机数据</span>
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Address</span><span class="o">&gt;</span><span class="w"> </span><span class="n">pending_candidate_addrs_</span><span class="p">;</span><span class="w">  </span><span class="c1">// 候选地址队列</span>
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>
+</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">kMaxProbeRetries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span><span class="p">;</span>
+</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">kInitialProbeDelayMs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">100</span><span class="p">;</span>
+</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">kMaxProbeDelayMs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2000</span><span class="p">;</span>
+</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="p">};</span>
+</span></code></pre></div>
+<p>这三个模块的协作链路可以用一次客户端主动迁移来串联：</p>
+<ol>
+<li>客户端调用 <code>PathManager::InitiateMigrationToAddress(new_local_addr)</code></li>
+<li>PathManager 先通过 <code>ConnectionIDCoordinator::RotateRemoteConnectionID()</code> 切换到一个新的对端 CID——这样新路径上的包用新 CID，旧路径上的包用旧 CID，观察者无法关联</li>
+<li>PathManager 创建新的 UDP socket 并绑定到新地址</li>
+<li>PathManager 生成 8 字节随机数据，在新路径上发送 <code>PATH_CHALLENGE</code></li>
+<li>如果在超时之前收到匹配的 <code>PATH_RESPONSE</code>——路径验证通过，调用 <code>CompleteMigration()</code> 切换主路径</li>
+<li>如果重试 5 次仍然失败——调用 <code>HandleMigrationFailure()</code> 回退到原路径</li>
+</ol>
+<p>对于 NAT rebinding，流程更被动：服务端通过 <code>OnObservedPeerAddress()</code> 发现对端地址变了，会把新地址加入候选队列，然后启动路径验证。验证通过后，服务端就把对端地址更新为新地址。</p>
+<p>迁移这个功能，表面上看是"网络地址变化"，但实际上牵动了连接层的多个子系统——CID 需要轮换、拥塞控制需要重新探测新路径的 cwnd（因为新路径的 RTT 和带宽可能完全不同）、防放大保护需要重新生效……quicX 通过把 CID 管理和路径管理分拆为独立模块，让这些复杂性各归其位，对外呈现为一个平滑的迁移体验。</p>
+<hr />
+<h2 id="126">12.6 身份与路径的分离，是一切的起点</h2>
+<p>Connection ID 看上去只是一个小小的设计决策——用一串随机字节代替 IP 四元组来标识连接。但这个决策的后果是深远的。</p>
+<p>它改变了"连接"的本质。在 TCP 的世界里，"连接"是四元组上的一段字节流——IP 一变，连接就断，就像一个人换了住址就丢了身份。在 QUIC 的世界里，"连接"是一个可以脱离任何特定网络路径而独立存在的协议实体。它有自己的身份证（CID），有自己的信任验证机制（PATH_CHALLENGE/PATH_RESPONSE），有自己的隐私保护策略（CID 轮换），甚至有自己的"搬家流程"（路径迁移）。连接不再是路径的附庸，而是路径的主人。</p>
+<p>它也改变了"可靠"的含义。TCP 的可靠性建立在一个隐含假设之上：网络路径是稳定的。一旦路径变了，可靠性就断裂了——不是因为数据丢了，而是因为连接本身消失了。QUIC 把这个假设拆掉了：即使路径不稳定，连接也可以延续，可靠性也可以跨路径维持。这不是一个边缘场景的优化，而是对"连接"概念的重新定义。</p>
+<p>回头看 quicX 的实现，CID 的两层管理架构（<code>ConnectionIDManager</code> + <code>ConnectionIDCoordinator</code>）和 <code>PathManager</code> 的路径验证逻辑，都不是凭空设计出来的——它们是 RFC 9000 中"身份与路径分离"这个核心思想在工程中的自然投影。协议告诉你"连接可以迁移"，但工程要回答的是"迁移时 CID 怎么换、路径怎么验、拥塞窗口怎么重置、防放大保护怎么重新生效"。每一个模块的存在，都对应着一个具体的工程问题。</p>
+<p><strong>身份与路径的分离，是 QUIC 连接设计中最安静、也最深刻的革命。</strong> 它不像 0-RTT 那样有立竿见影的性能提升，不像 TLS 融合那样有显眼的安全加固——但没有它，QUIC 就只是一个跑在 UDP 上的 TCP 替代品，而不是一个真正为移动互联网时代重新设计的传输协议。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="页脚" >
+        
+          
+          <a href="../11_connection_state_and_params/" class="md-footer__link md-footer__link--prev" aria-label="上一页: 11. 连接的生死簿: 状态机与传输参数协商">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                上一页
+              </span>
+              <div class="md-ellipsis">
+                11. 连接的生死簿: 状态机与传输参数协商
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../03_reliable/00_intro/" class="md-footer__link md-footer__link--next" aria-label="下一页: 重构可靠传输：从包级确认到语义重传">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                下一页
+              </span>
+              <div class="md-ellipsis">
+                重构可靠传输：从包级确认到语义重传
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.indexes", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

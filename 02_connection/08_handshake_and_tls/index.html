@@ -1,0 +1,2526 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="从协议设计到 quicX 网络库实践">
+      
+      
+        <meta name="author" content="ekko">
+      
+      
+      
+        <link rel="prev" href="../07_initial_keys_and_crypto_frame/">
+      
+      
+        <link rel="next" href="../09_zero_rtt_and_session_resume/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+    
+    
+      
+        <title>8. 破冰之握: 连接建立与 TLS 融合 - 深入解析 QUIC 与 HTTP/3</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#8-tls" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-header__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            深入解析 QUIC 与 HTTP/3
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              8. 破冰之握: 连接建立与 TLS 融合
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-nav__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    深入解析 QUIC 与 HTTP/3
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    序言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷一: 基石时代 (基础设施)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷一: 基石时代 (基础设施)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    0. 卷一导读：在用户态重建网络世界的代价
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/01_memory_pool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. 内存的七巧板: 连接级内存池的设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/02_zero_copy_buffer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. 拷贝的艺术: 零拷贝 Buffer 的生存哲学
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/03_network_io_abstraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. 管道与枢纽: 网络 IO 的架构抽象
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/04_thread_model_and_lockfree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. 打破全局锁: One-Loop-Per-Thread 的无锁演进
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/05_async_timer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. 时空的刻度: 高效定时器与事件循环的融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二导读：打破四元组枷锁，重建连接的定义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_packet_and_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. 万物开端: QUIC Packet 解剖与连接世界地图
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_initial_keys_and_crypto_frame/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. 公开的秘密: Initial 密钥与 CRYPTO Frame 的起步逻辑
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. 破冰之握: 连接建立与 TLS 融合
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. 破冰之握: 连接建立与 TLS 融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#81-tcp-tls-quic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 两套世界不能简单叠加：为什么 TCP + TLS 的老办法不适合 QUIC
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#82-initialhandshakeapplication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 三重门：Initial、Handshake、Application 三个加密阶段如何接力
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#83-1-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 一个往返里的手术：1-RTT 握手是怎样被拼出来的
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#84-tls-quic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.4 握手的翻译官：TLS 与 QUIC 之间到底谁负责什么
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#85-quicx-connectioncrypto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.5 quicX 的粘合层：ConnectionCrypto 如何把两套机器接上
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#86-key-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.6 握手之后，钥匙也不会永远不变：Key Update 在哪里发生
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#87" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.7 看起来像握手，其实是在重画分层
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_zero_rtt_and_session_resume/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. 零等待的奇迹: 0-RTT 与会话恢复
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_address_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. 护城河: 地址验证与防放大攻击
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../11_connection_state_and_params/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. 连接的生死簿: 状态机与传输参数协商
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../12_connection_id_and_migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. 会飞的连接: Connection ID 与路径迁移
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    重构可靠传输：从包级确认到语义重传
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/13_why_quic_rebuilds_reliability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. 可靠性的代价: QUIC 为什么不再照搬 TCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/14_pn_space_and_ack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. ACK 的艺术: 序列号空间与确认边界
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/15_loss_detection_and_pto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. 消失与追踪: 丢包探测与 PTO 幽灵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/16_retransmission_semantics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. 重传的边界: 重发的不是 Packet, 而是语义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/17_packet_builder_and_encryption/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. 发包管线: PacketBuilder 与加密层调度
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/18_timer_and_lifecycle_war_story/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. 刺刀见红: 异步定时器与连接生命周期的暗战
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    拥塞控制：网络管道的物理学与控制论
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/19_rtt_and_cwnd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. 管道的容量: RTT 测量与拥塞窗口的第一原理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/20_reno_and_aimd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. 丢包即信号: Reno 与 AIMD 的经典控制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/21_cubic_and_high_bdp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. 立方的野心: Cubic 与高 BDP 网络的攻防
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/22_bbr_evolution_and_coexistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. 模型的革命: BBR 三代演进与算法共存
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/23_bbr_in_quicx/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    23. 速度的手术台: quicX 中拥塞控制的工程实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    多路复用与流控：并发的秩序与背压机制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/24_multiplexing_history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    24. 从队头阻塞到传输层并发: Stream 为什么是 QUIC 的另一半身体
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/25_stream_state_machine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    25. 流的诞生与终结: 发送与接收状态机
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/26_flow_control_windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    26. 双层流控与背压: 额度如何限制流，闸门关上后又如何打开
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/27_blocked_and_max_frames/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    27. quicX 的 Stream 管理: 从 pending 到 manager 的工程全景
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    抵达彼岸: HTTP/3 与乱序世界的契约
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/28_http3_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    28. 换一张地图: HTTP/3 的帧体系与控制面
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/29_http3_mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    29. 重新映射: 从 QUIC 流到请求与响应
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/30_qpack_compression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    30. QPACK: 乱序世界里的头压缩引擎
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/31_http3_connection_lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31. 一条 HTTP/3 连接的一生
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷七: 生产级修养
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷七: 生产级修养
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    生产级修养：从可用网络协议到工业级基础设施
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/32_metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32. 透明的眼睛: Metrics、日志上下文与可观测性基座
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/33_qlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33. 黑匣子: Qlog 可观测性实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/34_protocol_upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34. 通天塔的阶梯: HTTP 协议协商与版本升级
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/35_interop_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35. 试炼场: 与 Nginx / Quiche 的互联互通
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#81-tcp-tls-quic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 两套世界不能简单叠加：为什么 TCP + TLS 的老办法不适合 QUIC
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#82-initialhandshakeapplication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 三重门：Initial、Handshake、Application 三个加密阶段如何接力
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#83-1-rtt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 一个往返里的手术：1-RTT 握手是怎样被拼出来的
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#84-tls-quic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.4 握手的翻译官：TLS 与 QUIC 之间到底谁负责什么
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#85-quicx-connectioncrypto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.5 quicX 的粘合层：ConnectionCrypto 如何把两套机器接上
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#86-key-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.6 握手之后，钥匙也不会永远不变：Key Update 在哪里发生
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#87" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.7 看起来像握手，其实是在重画分层
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="8-tls">8. 破冰之握：连接建立与 TLS 融合</h1>
+<p>QUIC 需要 TLS 的密钥协商能力，但不想要 TLS 的传输外壳。这件事说起来只有一句话，做起来却要动一场大手术——把一个原本自给自足的协议拆开，只留下密钥协商的心脏，把承载、分片、加密封装这些器官全部摘掉，再用 QUIC 自己的零件重新接上。手术刀落在哪里、缝合线走什么路径，就是本章要讲的事。</p>
+<hr />
+<h2 id="81-tcp-tls-quic">8.1 两套世界不能简单叠加：为什么 TCP + TLS 的老办法不适合 QUIC</h2>
+<p>我们已经知道 QUIC 把加密嵌进了传输层，也知道 TLS Record 被抛弃了。但"嵌入"和"抛弃"这两个词实在太轻飘——它们没有回答一个更尖锐的问题：<strong>到底是 TLS 的哪些东西被留下了，哪些被拿走了，以及为什么非拿不可？</strong></p>
+<p>把 TLS 原封不动地套到 QUIC 上，三个地方会撞车。</p>
+<p><strong>第一，分片撞车</strong>。TLS Record 有自己的分片机制——一条握手消息可能比一个 TCP Segment 大，需要拆开。但在 QUIC 这边，Packet 本身就是分片单位，而且 QUIC 的 Packet 保护（Header Protection + Payload Protection）已经内嵌了加密封装。再套一层 TLS Record，等于在已经封好的信封外面再套一层信封。</p>
+<p><strong>第二，类型系统撞车</strong>。TLS Record 用类型字段来区分握手消息（Handshake）和应用数据（ApplicationData）。但在 QUIC 里，这个区分已经由 Frame 类型完成了——CRYPTO Frame 承载握手消息，STREAM Frame 承载应用数据。两套独立的类型系统同时工作，增加复杂度却不增加价值。</p>
+<p><strong>第三，也是最致命的一个——可靠性语义不兼容</strong>。TLS 假设底下是一条可靠的、按序的字节流，TCP 恰好满足这个假设。但 QUIC 的可靠传输是面向 Frame 语义的，不是面向字节流的。TLS 继续假设底下有字节流，就没法直接嫁接。</p>
+<p>但 QUIC 仍然需要 TLS 最核心的那些能力：<strong>(EC)DHE 密钥交换</strong>、<strong>X.509 证书校验</strong>、<strong>HKDF 密钥派生</strong>。TLS 1.3 花了多年时间打磨出的安全模型——前向安全性、零泄露设计、简洁的密钥层次——QUIC 没有理由自己重新造一遍。</p>
+<p>所以 QUIC 做了一个非常务实的选择：<strong>把 TLS 拆开，只取它最核心的密钥协商能力，然后把承载、分片、加密封装这些"传输层该做的事"从 TLS 里抽出来，交给 QUIC 自己</strong>。</p>
+<p>这就是为什么我们说 QUIC"使用了 TLS 1.3"，但不是"把 TLS 套在 UDP 之上"。TLS 的握手逻辑被嵌进了 QUIC 的 CRYPTO Frame 流里，TLS 派生的密钥被安装到 QUIC 的 Packet 保护机制里，而 TLS Record 层则被彻底抛弃。分层依然存在，但边界已经被重画了。</p>
+<hr />
+<h2 id="82-initialhandshakeapplication">8.2 三重门：Initial、Handshake、Application 三个加密阶段如何接力</h2>
+<p>如果说 QUIC 的握手是一出三幕戏，那 <strong>Initial、Handshake、Application</strong> 就是这三幕戏的名字。每一幕都有自己专属的密钥，每一幕的任务都不同。</p>
+<p><strong>第一幕：Initial 阶段</strong>——这是第 7 章已经讲过的内容。客户端用 Initial Secret 保护第一个 Initial Packet，服务端用同样的 Initial Secret 解密并回复。这个阶段的任务只有一个：把第一组握手消息安全送达，点燃握手的火种。</p>
+<p>但 Initial 阶段有个天然的局限：Initial Secret 是从公开信息（DCID + Initial Salt）派生出来的，它不提供前向安全性——如果有人记录了这次握手的所有 Initial Packet，理论上可以在事后破解。这在短期场景下可以接受，但显然不能用来保护长期的应用数据。</p>
+<p>这就引出了 <strong>第二幕：Handshake 阶段</strong>。当客户端收到 ServerHello 之后，双方各自用 ClientHello 和 ServerHello 中携带的 (EC)DHE 参数完成密钥交换，算出一个 <strong>shared secret</strong>。TLS 1.3 的密钥调度以这个 shared secret 为原料，通过 HKDF-Extract 派生出 <strong>Handshake Secret</strong>——注意，Handshake Secret 和 Initial Secret 是两条完全独立的派生链路，前者基于只有通信双方才知道的 DHE 共享密钥，后者基于公开的 DCID。Handshake 阶段的使命，是完成身份验证——双方交换证书、验证 Finished，最终确定 <strong>Application Traffic Secret</strong>（即 1-RTT 密钥）。</p>
+<p><strong>前向安全性从这里开始生效</strong>。因为 Handshake Secret 源自临时 (EC)DHE 密钥交换，即使攻击者记录了全部握手包并在事后拿到了服务端的长期私钥，他也无法还原这次 DHE 产生的 shared secret，自然也无法解密 Handshake 和 Application 阶段的任何数据。前向安全性不是某个"阶段"专门提供的，而是 DHE 密钥交换这个机制天然带来的——只要 DHE 临时私钥在用完后被销毁，这条安全承诺就成立。</p>
+<p><strong>第三幕：Application 阶段</strong>——当握手完成，双方都安装了 1-RTT 密钥之后，连接就进入了稳定的数据传输期。这个阶段不再需要握手消息，所有应用数据都用 1-RTT 密钥保护。</p>
+<p>为什么这三个阶段不能混成一团？</p>
+<p>答案在于 <strong>加密级别的演进需要清晰可辨</strong>。Initial 阶段用的是最"弱"的密钥，因为它只需要完成"点火"这个最小任务；Handshake 阶段用的是更强的密钥，因为它要完成密钥协商的核心工作；Application 阶段用的是最强的密钥，因为它是连接最常见、最长期的工作状态。</p>
+<p>更重要的是，这三个阶段和 QUIC 的包类型有明确的映射关系：Initial Packet 用 Initial Secret 保护，Handshake Packet 用 Handshake Secret 保护，1-RTT Packet（也叫 Short Header Packet）用 Application Traffic Secret 保护。<strong>每一种包类型，都对应着一种特定的加密级别</strong>。这种清晰的映射，让接收端在看到一个包的时候，立刻就知道该用哪把钥匙来解密它。</p>
+<p>理解了"三重门"的推进逻辑，你就理解了 QUIC 握手最核心的结构——不是一堆散乱的密钥，而是一条清晰的、逐步升级的加密推进链。</p>
+<hr />
+<h2 id="83-1-rtt">8.3 一个往返里的手术：1-RTT 握手是怎样被拼出来的</h2>
+<p>QUIC 经常被宣传为"1-RTT 握手"——只需要一次往返就能完成握手，听起来比 TCP + TLS 的 1.5 + 1 = 2.5 RTT 快了很多。</p>
+<p>但"1-RTT 很快"这句话如果不拆开看，很容易让人误以为"QUIC 少做了事"。实际情况恰恰相反：<strong>QUIC 不是少做了事，而是把事排得足够紧凑</strong>。</p>
+<p>我们来看看这"一次往返"里到底发生了什么。</p>
+<p><strong>客户端出发</strong>：客户端发出第一个 Initial Packet，里面装着 TLS ClientHello。这个包用 Initial Secret 保护。ClientHello 里包含着客户端的密码套件偏好、密钥交换参数、随机数等等。客户端发完这个包，握手就正式开始了——计时器开始走，客户端开始等服务端的回复。</p>
+<p><strong>服务端接收并回复</strong>：服务端收到客户端的 Initial Packet 之后，用 Initial Secret 解密，拿到 ClientHello。然后服务端开始处理 TLS 握手——生成自己的随机数、选择密码套件、生成密钥交换参数、准备证书……</p>
+<p>关键来了：<strong>服务端并不是等到所有 TLS 握手消息都准备完毕之后才回复</strong>。TLS 1.3 的设计允许服务端在一个往返里就完成几乎所有握手工作——ServerHello、证书、验证 Finished，全部可以塞进同一个回复包里。</p>
+<p>但这个回复包有点复杂：因为服务端同时要发两种加密级别的数据。Initial 包的回复（ACK 和继续的握手消息）需要用 Initial Secret 保护；但与此同时，服务端已经可以开始用 Handshake Secret 发送 Handshake 级别的数据了。</p>
+<p>这就是 QUIC 真正"快"的地方：<strong>Packet Coalescing</strong>。一个 UDP Datagram 里，可以同时装多个不同加密级别的 QUIC Packet——服务端可以把 Initial 包的 ACK 和 Handshake 包塞进同一个 UDP Datagram 里发出去。接收端收到之后，按照顺序一个个拆开：先用 Initial Secret 解密 Initial Packet，再用 Handshake Secret 解密 Handshake Packet。</p>
+<p><strong>客户端收到这个 Datagram 之后，事情还没完</strong>。客户端先从 ServerHello 中提取服务端的 (EC)DHE 参数，算出 shared secret，派生出 Handshake Secret——这把钥匙让它能解密同一个 Datagram 里紧跟着的 Handshake Packet。打开之后，里面是服务端的证书链、CertificateVerify 签名和 Finished 消息。客户端逐一验证：证书是不是可信的？签名能不能通过？Finished 里的摘要对不对得上？</p>
+<p>验证全部通过之后，客户端做两件事：发送自己的 Handshake Finished（证明自己也完成了握手），同时安装 1-RTT 密钥。从这一刻起，客户端已经可以用 1-RTT 密钥发送应用数据了——虽然服务端要等收到客户端的 Finished 之后才会确认握手完成。</p>
+<p>用一张时序图来看，这"一次往返"里实际发生的事情远比想象中密集：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>客户端                                              服务端
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  │                                                  │
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  │  ─── Initial Packet ──────────────────────────&gt;  │
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  │      [CRYPTO: ClientHello]                       │
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  │      (Initial Secret 保护)                        │
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>  │                                                  │
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  │                                                  │  派生 Handshake Secret
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  │                                                  │  (从 DHE shared secret)
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  │                                                  │
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>  │  &lt;── Initial Packet ───────────────────────────  │
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  │      [ACK]                                       │
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>  │  &lt;── Handshake Packet ─────────────────────────  │  ┐
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>  │      [CRYPTO: ServerHello]                       │  │ Packet Coalescing
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>  │      [CRYPTO: Certificate]                       │  │ 多个加密级别的包
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>  │      [CRYPTO: CertificateVerify]                 │  │ 塞进同一个
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>  │      [CRYPTO: Finished]                          │  │ UDP Datagram
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>  │      (Handshake Secret 保护)                      │  ┘
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>  │                                                  │
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>  │  派生 Handshake Secret                            │
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>  │  解密证书 → 验证签名 → 校验 Finished               │
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>  │  派生 Application Traffic Secret (1-RTT 密钥)     │
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>  │                                                  │
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>  │  ─── Handshake Packet ─────────────────────────&gt; │
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>  │      [CRYPTO: Finished]                          │
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>  │  ─── 1-RTT Packet ────────────────────────────&gt;  │
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>  │      [STREAM: 应用数据]                           │
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>  │      (1-RTT 密钥保护)                              │
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>  │                                                  │
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>  │                                                  │  验证客户端 Finished
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>  │                                                  │  握手确认完成
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>  │                                                  │
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>  │  &lt;══ 1-RTT Packet ════════════════════════════   │
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>  │      [STREAM: 应用数据]                           │
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>  │                                                  │
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>           总计：1 RTT 之后客户端即可发送应用数据
+</span></code></pre></div>
+<p>注意图中的关键细节：服务端的回复是一个 <strong>Coalesced Datagram</strong>——Initial ACK 和 Handshake 包被塞进同一个 UDP 报文里。客户端收到后按序拆开，先用 Initial Secret 解 ACK，再用刚派生的 Handshake Secret 解密证书和 Finished。验证通过后，客户端同时发出自己的 Handshake Finished 和第一个 1-RTT 应用数据包——这就是"1-RTT"名字的由来。</p>
+<p>这就是为什么 1-RTT 握手看起来"只有一个往返"，但背后其实是多次加密级别的协作：Initial 级别的消息在启动握手，Handshake 级别的消息在完成身份验证，而最终的业务数据通道——Application 级别——在这个往返结束时就可以启用了。</p>
+<p>对实现层来说，这种"紧凑排布"提出了很高的要求。发送端需要精确控制哪些数据用哪个级别的密钥保护，哪些数据可以合并到一个 Datagram 里，哪些数据必须等前一个加密级别完成才能发送。<strong>QUIC 的快，不是少做了事，而是把每一件事的顺序都优化到了极致</strong>。</p>
+<hr />
+<h2 id="84-tls-quic">8.4 握手的翻译官：TLS 与 QUIC 之间到底谁负责什么</h2>
+<p>说了半天融合，很多人可能会问：<strong>TLS 和 QUIC 到底谁在指挥谁？</strong></p>
+<p>这个问题本身就带了一点误解。QUIC 不是"用 TLS 的 QUIC"，TLS 也不是"被 QUIC 控制的 TLS"。它们之间的关系，更像是一场双向协作——<strong>不是谁驱动谁，而是各自发挥所长，然后在握手这个节点上完美交接</strong>。</p>
+<p><strong>TLS 负责的事情</strong>：
+- <strong>握手逻辑</strong>：TLS 决定什么时候该发 ClientHello、什么时候该收 ServerHello、什么时候该互相交换证书、什么时候握手算完成
+- <strong>证书校验</strong>：TLS 内置的 X.509 证书验证逻辑，负责检查服务端（和可选的客户端）证书是否有效、是否可信
+- <strong>密钥派生</strong>：TLS 的 HKDF 模块负责从各种 Secret（Initial、Handshake、Application）派生出实际的加密密钥和 IV</p>
+<p><strong>QUIC 负责的事情</strong>：
+- <strong>承载与分片</strong>：TLS 产生的握手消息（握手记录）会被切分成 CRYPTO Frame，装进 Packet 里发送。QUIC 决定每个 Frame 放多少字节、每个 Packet 装哪些 Frame
+- <strong>重传与可靠</strong>：TLS 只需要关心"消息有没有被收到"，不需要关心"丢包了怎么补"——这是 QUIC 的事
+- <strong>加密级别调度</strong>：TLS 说"我现在要从 Initial 升级到 Handshake"，QUIC 就切换到对应的密钥，给后续的 Packet 加上对应的保护</p>
+<p>这里最关键的理解是：<strong>这不是"TLS 驱动 QUIC"，也不是"QUIC 驱动 TLS"，而是双向协作</strong>。TLS 提供的是"抽象的密钥"，QUIC 负责把这些密钥"落地"到具体的 Packet 保护上。</p>
+<p>用一张分层图来看，QUIC 内部的协议分层和 TLS 的嵌入位置是这样的（参考 RFC 9001 Figure 3 &amp; 4）：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>┌──────────────┬──────────────┐ ┌─────────────┐
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>│     TLS      │     TLS      │ │    QUIC     │
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>│  Handshake   │    Alerts    │ │ Applications│
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>│              │              │ │  (H3, etc.) │
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>├──────────────┴──────────────┴─┴─────────────┤
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>│                                             │
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>│              QUIC Transport                 │
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>│   (streams, reliability, congestion, etc.)  │
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>│                                             │
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>├─────────────────────────────────────────────┤
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>│                                             │
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>│          QUIC Packet Protection             │
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>│                                             │
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>└─────────────────────────────────────────────┘
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>TLS 和 QUIC 之间的数据流向：
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>┌────────────┐                         ┌────────────┐
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>│            │&lt;── Handshake Messages ──&gt;│            │
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>│            │&lt;── Validate 0-RTT ──────&gt;│            │
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>│            │&lt;── 0-RTT Keys ──────────│            │
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>│    QUIC    │&lt;── Handshake Keys ──────│    TLS     │
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>│            │&lt;── 1-RTT Keys ─────────│            │
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>│            │&lt;── Handshake Done ──────│            │
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>└────────────┘                         └────────────┘
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>  │         ▲
+</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>  │ Protect │ Protected
+</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>  ▼         │ Packet
+</span><span id="__span-1-29"><a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>┌────────────┐
+</span><span id="__span-1-30"><a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>│   QUIC     │
+</span><span id="__span-1-31"><a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>│  Packet    │
+</span><span id="__span-1-32"><a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>│ Protection │
+</span><span id="__span-1-33"><a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>└────────────┘
+</span></code></pre></div>
+<p>上面这张图有两个关键信息。第一，TLS Handshake 和 TLS Alerts 与 QUIC Applications（比如 HTTP/3）是<strong>并排坐在 QUIC Transport 之上</strong>的——TLS 不是"包在 QUIC 外面"，而是嵌在 QUIC 里面，作为 QUIC 的一个内部组件。第二，TLS 向 QUIC 输出的不是加密后的数据，而是<strong>密钥本身</strong>——QUIC 拿到密钥后，自己完成 Packet Protection。这和 TCP + TLS 的模型截然不同：在那个模型里，TLS 既派生密钥又用密钥加密数据；在 QUIC 里，TLS 只派生密钥，加密的活由 QUIC Packet Protection 来干。</p>
+<p>具体到工程实现上，BoringSSL（Google 的 TLS 1.3 实现）提供了一套 <strong>SSL_QUIC_METHOD</strong> 接口。要理解这套接口在概念上解决了什么问题，得先想清楚传统 TLS 库是怎么工作的。</p>
+<p>在 TCP 的世界里，TLS 库自己控制网络 I/O——它直接调用 <code>read()</code> / <code>write()</code> 来收发数据。换句话说，TLS 库是"主动推送"模式：我要发握手消息了，我来调 socket 写出去；我要收握手消息了，我来调 socket 读进来。</p>
+<p>但在 QUIC 里，这套"push 模型"行不通了。握手消息不走 socket，走的是 CRYPTO Frame；密钥不是 TLS 自己用来加密 Record 的，而是要交给 QUIC 去保护 Packet。TLS 库不能再自己控制网络 I/O，它必须变成一个"被动提供服务"的角色——<strong>QUIC 喂给它握手数据，它产出密钥和握手响应，然后 QUIC 决定怎么发出去</strong>。</p>
+<p><code>SSL_QUIC_METHOD</code> 就是实现这个"push 到 pull"转换的接口契约。它是一组回调函数，QUIC 侧注册给 BoringSSL，让 TLS 库在需要的时候"回调"QUIC：</p>
+<ul>
+<li><strong><code>SetReadSecret</code> / <code>SetWriteSecret</code></strong>：TLS 派生出新密钥时，通过这两个回调通知 QUIC "这是新的读/写密钥，请安装"</li>
+<li><strong><code>AddHandshakeData</code></strong>：TLS 产生握手输出时，通过这个回调把数据交给 QUIC，由 QUIC 负责切成 CRYPTO Frame 发送</li>
+<li><strong><code>FlushFlight</code></strong>：TLS 告诉 QUIC "这一批握手消息可以发了"</li>
+<li><strong><code>SendAlert</code></strong>：出错时通知 QUIC 发送 TLS Alert</li>
+</ul>
+<p>理解这个职责边界，比背接口名重要一百倍。<strong>当你知道 TLS 只负责"握手逻辑+密钥派生"，而 QUIC 负责"承载+加密+可靠传输"的时候，整个融合模型就变得清晰了</strong>。</p>
+<hr />
+<h2 id="85-quicx-connectioncrypto">8.5 quicX 的粘合层：ConnectionCrypto 如何把两套机器接上</h2>
+<p>协议层面的融合，最终要落到工程实现上。在 quicX 里，这个"粘合层"就是 <strong>ConnectionCrypto</strong>。</p>
+<p>如果说 TLS 是一台负责"握手逻辑"的机器，QUIC Packet 处理是另一台负责"可靠传输"的机器，那 ConnectionCrypto 就是连接这两台机器的变速箱——它把 TLS 输出的密钥翻译成 QUIC 能用的 Packet 保护参数，又把 QUIC 收到的 CRYPTO Frame 翻译成 TLS 能消费的握手消息。</p>
+<p>先看它的类声明（<code>src/quic/connection/connection_crypto.h</code>）：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">ConnectionCrypto</span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">TlsHandlerInterface</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">public</span><span class="o">:</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="c1">// ——TLS 回调，由 BoringSSL 通过 SSL_QUIC_METHOD 间接触发——</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">SetReadSecret</span><span class="p">(</span><span class="n">SSL</span><span class="o">*</span><span class="w"> </span><span class="n">ssl</span><span class="p">,</span><span class="w"> </span><span class="n">EncryptionLevel</span><span class="w"> </span><span class="n">level</span><span class="p">,</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">                               </span><span class="k">const</span><span class="w"> </span><span class="n">SSL_CIPHER</span><span class="o">*</span><span class="w"> </span><span class="n">cipher</span><span class="p">,</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">                               </span><span class="k">const</span><span class="w"> </span><span class="kt">uint8_t</span><span class="o">*</span><span class="w"> </span><span class="n">secret</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">secret_len</span><span class="p">);</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">SetWriteSecret</span><span class="p">(</span><span class="n">SSL</span><span class="o">*</span><span class="w"> </span><span class="n">ssl</span><span class="p">,</span><span class="w"> </span><span class="n">EncryptionLevel</span><span class="w"> </span><span class="n">level</span><span class="p">,</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">                                </span><span class="k">const</span><span class="w"> </span><span class="n">SSL_CIPHER</span><span class="o">*</span><span class="w"> </span><span class="n">cipher</span><span class="p">,</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">                                </span><span class="k">const</span><span class="w"> </span><span class="kt">uint8_t</span><span class="o">*</span><span class="w"> </span><span class="n">secret</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">secret_len</span><span class="p">);</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">WriteMessage</span><span class="p">(</span><span class="n">EncryptionLevel</span><span class="w"> </span><span class="n">level</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">uint8_t</span><span class="o">*</span><span class="w"> </span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">len</span><span class="p">);</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">FlushFlight</span><span class="p">();</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">SendAlert</span><span class="p">(</span><span class="n">EncryptionLevel</span><span class="w"> </span><span class="n">level</span><span class="p">,</span><span class="w"> </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">alert</span><span class="p">);</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">    </span><span class="c1">// ——QUIC 侧主动调用——</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">OnCryptoFrame</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">IFrame</span><span class="o">&gt;</span><span class="w"> </span><span class="n">frame</span><span class="p">);</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="nf">TriggerKeyUpdate</span><span class="p">();</span>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="k">private</span><span class="o">:</span>
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">    </span><span class="n">EncryptionLevel</span><span class="w"> </span><span class="n">cur_encryption_level_</span><span class="p">;</span>
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">CryptoStream</span><span class="o">&gt;</span><span class="w"> </span><span class="n">crypto_stream_</span><span class="p">;</span>
+</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">ICryptographer</span><span class="o">&gt;</span><span class="w"> </span><span class="n">cryptographers_</span><span class="p">[</span><span class="n">kNumEncryptionLevels</span><span class="p">];</span><span class="w"> </span><span class="c1">// 4 个级别</span>
+</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="p">};</span>
+</span></code></pre></div>
+<p>一个类，两张脸。上半部分是 <code>TlsHandlerInterface</code> 的虚函数实现——这些方法不是 quicX 主动调的，而是 BoringSSL 在握手推进过程中通过回调链触发的。下半部分是 QUIC 侧的入口——<code>OnCryptoFrame</code> 把收到的握手数据喂给 TLS，<code>TriggerKeyUpdate</code> 在长连接期间换钥。</p>
+<p>回调链怎么串起来的？看 <code>TLSConnection</code>（<code>src/quic/crypto/tls/tls_connection.cpp</code>）里的注册：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">static</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">SSL_QUIC_METHOD</span><span class="w"> </span><span class="n">gQuicMethod</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span><span class="n">TLSConnection</span><span class="o">::</span><span class="n">SetReadSecret</span><span class="p">,</span><span class="w">   </span><span class="c1">// BoringSSL 派生出读密钥时回调</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="n">TLSConnection</span><span class="o">::</span><span class="n">SetWriteSecret</span><span class="p">,</span><span class="w">  </span><span class="c1">// BoringSSL 派生出写密钥时回调</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="n">TLSConnection</span><span class="o">::</span><span class="n">AddHandshakeData</span><span class="p">,</span><span class="c1">// BoringSSL 产出握手消息时回调</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="n">TLSConnection</span><span class="o">::</span><span class="n">FlushFlight</span><span class="p">,</span><span class="w">     </span><span class="c1">// 一批握手消息可以发送时回调</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">    </span><span class="n">TLSConnection</span><span class="o">::</span><span class="n">SendAlert</span><span class="p">,</span><span class="w">       </span><span class="c1">// 出错时回调</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="p">};</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="c1">// Init() 中注册：</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="n">SSL_set_quic_method</span><span class="p">(</span><span class="n">ssl_</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span><span class="w"> </span><span class="o">&amp;</span><span class="n">gQuicMethod</span><span class="p">);</span>
+</span></code></pre></div>
+<p><code>gQuicMethod</code> 里的五个静态函数，就是上一节说的"pull 模型"接口。BoringSSL 不碰网络、不碰 Packet，它只通过这五个出口把结果交出来。<code>TLSConnection</code> 的静态函数收到回调后，通过 <code>SSL_get_app_data</code> 拿回自己的实例指针，再转发给 <code>handler_</code>——也就是 <code>ConnectionCrypto</code>。</p>
+<p>整条链路：<strong>BoringSSL → gQuicMethod 静态回调 → TLSConnection → ConnectionCrypto</strong>。</p>
+<p>密钥安装的核心流程，看 <code>SetReadSecret</code>（<code>src/quic/connection/connection_crypto.cpp</code>）：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">ConnectionCrypto::SetReadSecret</span><span class="p">(</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="n">SSL</span><span class="o">*</span><span class="w"> </span><span class="n">ssl</span><span class="p">,</span><span class="w"> </span><span class="n">EncryptionLevel</span><span class="w"> </span><span class="n">level</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">SSL_CIPHER</span><span class="o">*</span><span class="w"> </span><span class="n">cipher</span><span class="p">,</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">uint8_t</span><span class="o">*</span><span class="w"> </span><span class="n">secret</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">secret_len</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">ICryptographer</span><span class="o">&gt;</span><span class="w"> </span><span class="n">cryptographer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cryptographers_</span><span class="p">[</span><span class="n">level</span><span class="p">];</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">cryptographer</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="k">nullptr</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">        </span><span class="n">cryptographer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MakeCryptographer</span><span class="p">(</span><span class="n">cipher</span><span class="p">);</span><span class="w">  </span><span class="c1">// 按密码套件创建加解密器</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">        </span><span class="n">cryptographer</span><span class="o">-&gt;</span><span class="n">SetVersion</span><span class="p">(</span><span class="n">quic_version_</span><span class="p">);</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">        </span><span class="n">cryptographers_</span><span class="p">[</span><span class="n">level</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cryptographer</span><span class="p">;</span><span class="w">     </span><span class="c1">// 安装到对应级别的槽位</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="n">cur_encryption_level_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">level</span><span class="p">;</span><span class="w">                  </span><span class="c1">// 推进当前加密级别</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">    </span><span class="n">cryptographer</span><span class="o">-&gt;</span><span class="n">InstallSecretWithVersion</span><span class="p">(</span><span class="n">secret</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="kt">uint32_t</span><span class="p">)</span><span class="n">secret_len</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w"> </span><span class="n">quic_version_</span><span class="p">);</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>四个加密级别（<code>kInitial</code>、<code>kEarlyData</code>、<code>kHandshake</code>、<code>kApplication</code>），四个槽位，每次 TLS 派生出新密钥，就往对应槽位装一把新锁。<code>cur_encryption_level_</code> 标记当前走到了哪一级——这个状态和连接状态机紧密配合，握手推进到哪一步，加密级别就切换到哪一级。</p>
+<p>为什么 quicX 要把 ConnectionCrypto、CryptoStream、连接状态推进解耦成三个独立模块？</p>
+<p>因为 <strong>加密级别的切换、握手消息的处理、连接状态的推进，是三个不同维度的问题</strong>。把它们混在一起，只会得到一个巨大的、难以维护的"总指挥"类。把它们拆开，每个模块只专注自己的职责，然后用清晰的消息传递把它们串联起来——这就是 quicX 在工程层面的选择。</p>
+<hr />
+<h2 id="86-key-update">8.6 握手之后，钥匙也不会永远不变：Key Update 在哪里发生</h2>
+<p>当握手完成，应用数据开始用 1-RTT 密钥稳定传输，很多人会以为密钥就不会再变了。实际上 <strong>Key Update 是 QUIC/TLS 融合模型的自然延伸</strong>——它发生在连接已经成熟运行之后，而不是把连接重新拉回握手期。</p>
+<p>想象一下：你有一扇门，钥匙是 1-RTT 密钥。通常情况下，这扇门一直用同一把钥匙就能正常开关。但时间长了，你总会想——万一这把钥匙被复制了呢？万一有人通过长期观察发现了钥匙的规律呢？</p>
+<p>Key Update 就是来解决这个问题的。它做的事情很简单：<strong>在不中断连接的前提下，把 1-RTT 密钥平滑切换到新一代的密钥</strong>。</p>
+<p>为什么说它是"自然延伸"而不是"重新握手"？</p>
+<p>因为 Key Update 完全发生在 Application 级别之内。它不需要再走一遍 Initial → Handshake → Application 的完整升级路径，不需要再交换证书，不需要再验证身份。RFC 9001 §6 甚至明确禁止在 QUIC 里发送 TLS 的 <code>KeyUpdate</code> 消息——<strong>QUIC 的 Key Update 根本不经过 TLS 握手层，而是完全由 QUIC 自己在传输层完成的</strong>。</p>
+<p>具体来说，新密钥的派生非常直接：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>next_secret = HKDF-Expand-Label(current_secret, &quot;quic ku&quot;, &quot;&quot;, hash_len)
+</span></code></pre></div>
+<p>从当前的 Application Traffic Secret 出发，用 <code>"quic ku"</code> 作为标签，通过一次 HKDF-Expand-Label 就能算出下一代 secret，再从新 secret 派生出新的加密密钥和 IV。没有握手消息来回、没有证书交换——一次哈希运算就完成了换代。</p>
+<p>那接收端怎么知道发送端换了钥匙？</p>
+<p>答案藏在 Short Header（1-RTT Packet）里的一个 1-bit 标志位：<strong>Key Phase bit</strong>。发起方翻转这个 bit（从 0 变 1，或从 1 变 0），然后用新密钥加密后续的包。接收方看到 Key Phase 发生变化，就知道对端已经换了钥匙，于是自行计算新密钥来解密——不需要任何显式的"确认"消息。接收方随后也会更新自己的发送密钥，跟随翻转 Key Phase。</p>
+<p>在这个过渡窗口里，旧密钥还会保留一段时间。因为网络中可能还有用旧密钥加密的在途包，接收方需要能够同时用新旧两代密钥来解密，直到确认所有旧包都已到达或超时。</p>
+<p>在 quicX 里，<code>KeyUpdateTrigger</code>（<code>src/quic/connection/key_update_trigger.h</code>）负责决定"什么时候该换"——它同时监控发送字节量和包号间隔，任一指标越过阈值就触发更新。而 <code>ConnectionCrypto::TriggerKeyUpdate()</code> 负责实际的换钥动作：直接调用 <code>cryptographer-&gt;KeyUpdateWithVersion()</code>，在 Application 级别的 cryptographer 上原地完成密钥轮换，整个过程不涉及 TLS 库的任何调用。</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1">// src/quic/connection/connection_crypto.cpp</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kt">bool</span><span class="w"> </span><span class="nf">ConnectionCrypto::TriggerKeyUpdate</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">cryptographer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cryptographers_</span><span class="p">[</span><span class="n">kApplication</span><span class="p">];</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">cryptographer</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span><span class="c1">// 先更新写密钥（出站流量），再更新读密钥（入站流量）</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cryptographer</span><span class="o">-&gt;</span><span class="n">KeyUpdateWithVersion</span><span class="p">(</span><span class="k">nullptr</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="n">quic_version_</span><span class="p">);</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">result</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">ICryptographer</span><span class="o">::</span><span class="n">Result</span><span class="o">::</span><span class="n">kOk</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">    </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cryptographer</span><span class="o">-&gt;</span><span class="n">KeyUpdateWithVersion</span><span class="p">(</span><span class="k">nullptr</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nb">false</span><span class="p">,</span><span class="w"> </span><span class="n">quic_version_</span><span class="p">);</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">ICryptographer</span><span class="o">::</span><span class="n">Result</span><span class="o">::</span><span class="n">kOk</span><span class="p">;</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>Key Phase bit 则定义在 <code>ShortHeaderFlag</code>（<code>src/quic/packet/header/header_flag.h</code>）里——仅仅 1 bit，却承载了整个 Key Update 的信令职责：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">ShortHeaderFlag</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">packet_number_length_</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">    </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">key_phase_</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w">            </span><span class="c1">// ← 就是这 1 bit</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">    </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">reserved_bits_</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">spin_bit_</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">    </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">fix_bit_</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">    </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">header_form_</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="p">};</span>
+</span></code></pre></div>
+<p>这正是 QUIC/TLS 融合模型的一个精彩缩影：密钥的演化不是"一次性的事件"，而是一个"持续的过程"。从 Initial 点火，到 Handshake 升级，到 Application 稳定运行，再到 Key Update 平滑轮换——整个密钥生命周期都被纳入了同一个设计框架。而这一切，TLS 库甚至不需要知情。</p>
+<hr />
+<h2 id="87">8.7 看起来像握手，其实是在重画分层</h2>
+<p>如果只能从本章带走一句话，那就是这句：<strong>QUIC 不是在"使用 TLS"，而是在重画传输层和安全层的边界</strong>。</p>
+<p>在 TCP 的世界里，传输层和安全层是两栋独立的楼——TCP 管可靠，TLS 管加密，各自有自己的分片、有自己的头部、有自己的状态机。它们通过一条字节流管道连接，彼此不需要知道对方的内部细节。</p>
+<p>QUIC 把这两栋楼拆了，重新盖成了一栋。TLS 的握手逻辑被嵌进了 CRYPTO Frame 流里，TLS 派生的密钥被直接安装到 Packet 保护模块上，TLS Record 层被 QUIC 的 Frame + Packet 封装彻底取代。这不是拼接，是融合——代价是实现复杂度的陡增，收益是 1-RTT 握手和 Key Update 这种在旧架构下根本不可能的东西。</p>
+<p>quicX 的 <code>ConnectionCrypto</code> 就是这场融合在 C++ 里的一个切面：一个类，同时实现着 TLS 回调接口和 QUIC 密钥管理接口，把两个原本互不相识的系统缝在一起。它不优雅，但它诚实——因为协议本身要求的就是这种深度的交织，而不是隔着一条字节流管道的客气。</p>
+<hr />
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="页脚" >
+        
+          
+          <a href="../07_initial_keys_and_crypto_frame/" class="md-footer__link md-footer__link--prev" aria-label="上一页: 7. 公开的秘密: Initial 密钥与 CRYPTO Frame 的起步逻辑">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                上一页
+              </span>
+              <div class="md-ellipsis">
+                7. 公开的秘密: Initial 密钥与 CRYPTO Frame 的起步逻辑
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../09_zero_rtt_and_session_resume/" class="md-footer__link md-footer__link--next" aria-label="下一页: 9. 零等待的奇迹: 0-RTT 与会话恢复">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                下一页
+              </span>
+              <div class="md-ellipsis">
+                9. 零等待的奇迹: 0-RTT 与会话恢复
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.indexes", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

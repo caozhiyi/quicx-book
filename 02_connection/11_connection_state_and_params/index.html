@@ -1,0 +1,2559 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="从协议设计到 quicX 网络库实践">
+      
+      
+        <meta name="author" content="ekko">
+      
+      
+      
+        <link rel="prev" href="../10_address_validation/">
+      
+      
+        <link rel="next" href="../12_connection_id_and_migration/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+    
+    
+      
+        <title>11. 连接的生死簿: 状态机与传输参数协商 - 深入解析 QUIC 与 HTTP/3</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#11" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-header__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            深入解析 QUIC 与 HTTP/3
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              11. 连接的生死簿: 状态机与传输参数协商
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-nav__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    深入解析 QUIC 与 HTTP/3
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    序言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷一: 基石时代 (基础设施)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷一: 基石时代 (基础设施)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    0. 卷一导读：在用户态重建网络世界的代价
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/01_memory_pool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. 内存的七巧板: 连接级内存池的设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/02_zero_copy_buffer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. 拷贝的艺术: 零拷贝 Buffer 的生存哲学
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/03_network_io_abstraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. 管道与枢纽: 网络 IO 的架构抽象
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/04_thread_model_and_lockfree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. 打破全局锁: One-Loop-Per-Thread 的无锁演进
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/05_async_timer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. 时空的刻度: 高效定时器与事件循环的融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二导读：打破四元组枷锁，重建连接的定义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../06_packet_and_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. 万物开端: QUIC Packet 解剖与连接世界地图
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../07_initial_keys_and_crypto_frame/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. 公开的秘密: Initial 密钥与 CRYPTO Frame 的起步逻辑
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../08_handshake_and_tls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. 破冰之握: 连接建立与 TLS 融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../09_zero_rtt_and_session_resume/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. 零等待的奇迹: 0-RTT 与会话恢复
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../10_address_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. 护城河: 地址验证与防放大攻击
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. 连接的生死簿: 状态机与传输参数协商
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. 连接的生死簿: 状态机与传输参数协商
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#111" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 握完手不等于真的连上：连接建立为什么不是一个瞬间
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#112" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 传输参数不是附表：能力协商为什么必须前置
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#113-connecting-connected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.3 从 connecting 到 connected：状态流转到底在表达什么
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#114-closingdraining" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.4 一场体面的告别：closing、draining 与连接退出的秩序
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#115-stateless-reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.5 断尾求生：Stateless Reset 为什么不属于正常告别
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#116-quicx" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6 quicX 的生命曲线：状态机、参数安装与关闭路径如何落地
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#117" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.7 活着，比连上更难
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../12_connection_id_and_migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. 会飞的连接: Connection ID 与路径迁移
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    重构可靠传输：从包级确认到语义重传
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/13_why_quic_rebuilds_reliability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. 可靠性的代价: QUIC 为什么不再照搬 TCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/14_pn_space_and_ack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. ACK 的艺术: 序列号空间与确认边界
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/15_loss_detection_and_pto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. 消失与追踪: 丢包探测与 PTO 幽灵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/16_retransmission_semantics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. 重传的边界: 重发的不是 Packet, 而是语义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/17_packet_builder_and_encryption/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. 发包管线: PacketBuilder 与加密层调度
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../03_reliable/18_timer_and_lifecycle_war_story/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. 刺刀见红: 异步定时器与连接生命周期的暗战
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    拥塞控制：网络管道的物理学与控制论
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/19_rtt_and_cwnd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. 管道的容量: RTT 测量与拥塞窗口的第一原理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/20_reno_and_aimd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. 丢包即信号: Reno 与 AIMD 的经典控制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/21_cubic_and_high_bdp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. 立方的野心: Cubic 与高 BDP 网络的攻防
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/22_bbr_evolution_and_coexistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. 模型的革命: BBR 三代演进与算法共存
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/23_bbr_in_quicx/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    23. 速度的手术台: quicX 中拥塞控制的工程实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    多路复用与流控：并发的秩序与背压机制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/24_multiplexing_history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    24. 从队头阻塞到传输层并发: Stream 为什么是 QUIC 的另一半身体
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/25_stream_state_machine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    25. 流的诞生与终结: 发送与接收状态机
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/26_flow_control_windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    26. 双层流控与背压: 额度如何限制流，闸门关上后又如何打开
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/27_blocked_and_max_frames/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    27. quicX 的 Stream 管理: 从 pending 到 manager 的工程全景
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    抵达彼岸: HTTP/3 与乱序世界的契约
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/28_http3_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    28. 换一张地图: HTTP/3 的帧体系与控制面
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/29_http3_mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    29. 重新映射: 从 QUIC 流到请求与响应
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/30_qpack_compression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    30. QPACK: 乱序世界里的头压缩引擎
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/31_http3_connection_lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31. 一条 HTTP/3 连接的一生
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷七: 生产级修养
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷七: 生产级修养
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    生产级修养：从可用网络协议到工业级基础设施
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/32_metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32. 透明的眼睛: Metrics、日志上下文与可观测性基座
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/33_qlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33. 黑匣子: Qlog 可观测性实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/34_protocol_upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34. 通天塔的阶梯: HTTP 协议协商与版本升级
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/35_interop_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35. 试炼场: 与 Nginx / Quiche 的互联互通
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#111" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 握完手不等于真的连上：连接建立为什么不是一个瞬间
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#112" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 传输参数不是附表：能力协商为什么必须前置
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#113-connecting-connected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.3 从 connecting 到 connected：状态流转到底在表达什么
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#114-closingdraining" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.4 一场体面的告别：closing、draining 与连接退出的秩序
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#115-stateless-reset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.5 断尾求生：Stateless Reset 为什么不属于正常告别
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#116-quicx" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6 quicX 的生命曲线：状态机、参数安装与关闭路径如何落地
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#117" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.7 活着，比连上更难
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="11">11. 连接的生死簿：状态机与传输参数协商</h1>
+<p>前面几章，我们把 QUIC 从密钥派生到地址验证的建连路径走了一遍。密钥安装了，握手完成了，地址也验证了——但连接真的"活"了吗？答案没有那么简单。TLS Finished 只是加密层的里程碑，不是连接的终点线。双方还要交换一整套传输参数、等服务端盖章发出 HANDSHAKE_DONE，连接才从"正在建立"推进到"可以使用"。而连接的另一头——如何体面地死去、如何在状态丢失时紧急刹车——同样不能留白。<strong>一个 QUIC 连接，从出生到死亡，每一步都被状态机严格约束着。模糊一分，工程里就会多十分混乱。</strong></p>
+<hr />
+<h2 id="111">11.1 握完手不等于真的连上：连接建立为什么不是一个瞬间</h2>
+<p>TLS Finished 收到了，连接就算建立了？</p>
+<p>这个答案对了一半。TLS Finished 确实是加密层的里程碑——它意味着双方已经确认了彼此的身份，加密通道已经稳固建立。但 <strong>TLS Finished 并不是连接建立的终点，甚至不是最重要的那个终点</strong>。</p>
+<p>QUIC 的连接不只是加密通道。在握手期间，双方还会交换一系列 <strong>transport parameter</strong>（传输参数）——最大流数、流控窗口大小、空闲超时时间、是否支持连接迁移……这些参数直接决定了连接后续的行为方式。<strong>如果双方没有交换完这些参数，即使 TLS 握手已经完成，连接依然处于"在建"状态</strong>——有些能力还不能用，有些行为还受到约束。</p>
+<p>更关键的是，QUIC 还需要一个显式的确认信号——<strong>HANDSHAKE_DONE 帧</strong>。服务端在确认双方的 TLS Finished 都交换完毕后才会发出这个帧，它是连接从"正在建立"推进到"已经建立"的最终标志。客户端在收到 HANDSHAKE_DONE 之前，无法确定服务端是否真正确认了握手完成。</p>
+<p>这就是为什么"连接建立"不是一个瞬间事件，而是一个<strong>过程</strong>——三个里程碑必须依次到达：TLS Finished 让加密层就绪，transport parameter 交换让传输层就绪，HANDSHAKE_DONE 让服务端盖章确认一切就绪。</p>
+<p>在工程实现里，这种"过程性"意味着你不能用一个简单的布尔值 <code>is_connected</code> 来判断连接状态。你需要一个真正的<strong>状态机</strong>——每个状态代表连接生命周期中的一个阶段，每个事件（收到某个包、某个验证通过、某个参数交换完成）推动状态向前流动。</p>
+<p>这就是 QUIC 状态机存在的意义：<strong>它不是文档附录里的装饰图，而是连接正确性的边界墙</strong>。</p>
+<hr />
+<h2 id="112">11.2 传输参数不是附表：能力协商为什么必须前置</h2>
+<p>TCP 也有能力协商——MSS 在 SYN 中交换，Window Scale 和 SACK 通过 TCP Option 协商——但种类有限，且嵌在连接建立的头几个包里就定完了，之后传输层再无"协商"的概念。QUIC 的野心更大：它把传输层的能力协商做成了一套完整的参数体系，和 TLS 握手一起打包发送。</p>
+<p><strong>Transport parameter 到底在约束什么？</strong></p>
+<p>让我们看几个关键的传输参数：</p>
+<ul>
+<li><strong>max_idle_timeout</strong>：空闲超时时间。如果连接在这个时间内没有任何数据交换，就自动关闭。这个参数必须在建连时达成共识，否则一方以为连接还活着，另一方已经把它超时删除了，就会产生"幽灵连接"。</li>
+<li><strong>max_stream_data</strong>：单条 Stream 的流控上限。接收方告诉发送方：你最多一次发多少数据到这个 Stream。</li>
+<li><strong>max_data</strong>：整个连接的总流控上限。接收方告诉发送方：你在这个连接上最多能发多少数据。</li>
+<li><strong>max_streams</strong>：对端能创建的最大 Stream 数量。</li>
+<li><strong>active_connection_id_limit</strong>：对端能使用的最大 Connection ID 数量。</li>
+<li><strong>disable_migration</strong>：是否禁用连接迁移。</li>
+</ul>
+<p>这些参数每一个都直接关系到连接的后续行为。<strong>如果双方对这些参数没有达成共识，连接的后续通信就会出问题</strong>。比如客户端想创建 100 条 Stream 发请求，但服务端的 <code>max_streams</code> 只允许 10 条——如果不提前协商好，双方对"能发多少"的理解就会产生分歧。</p>
+<p>这就是为什么 transport parameter 必须<strong>前置</strong>——它们必须在连接进入稳定状态之前交换完成。<strong>QUIC 把能力协商和密钥交换绑在一起，本质上是在确保：连接一旦"可用"，双方对"怎么用"已经达成共识了</strong>。</p>
+<p>具体的传递机制也值得一提。Transport parameter 作为 TLS 扩展 <code>quic_transport_parameters</code>（扩展类型 0x39）嵌入握手消息中——客户端的参数放在 ClientHello 里，服务端的参数放在 EncryptedExtensions 里。这意味着客户端的参数在 Initial 阶段就随 ClientHello 出发了（此时 Initial Secret 保护提供的是最低限度的加密），而服务端的参数则在 Handshake 阶段随 EncryptedExtensions 返回，受到 Handshake Secret 的保护。这和 TLS 握手绑在一起并非偶然：transport parameter 是敏感信息——<code>max_streams</code> 暴露了服务端愿意为这个连接投入多少资源，<code>disable_migration</code> 暴露了服务端的安全策略——这些信息不应该在加密通道之外传输。</p>
+<p>从协议的角度看，transport parameter 不是一页"配置清单"，而是一场真正的<strong>能力谈判</strong>。双方都在告诉对方：我能接受什么、我能提供什么、我们的通信边界在哪里。这些边界在握手期定下来，之后的通信就在这些边界内进行。</p>
+<hr />
+<h2 id="113-connecting-connected">11.3 从 connecting 到 connected：状态流转到底在表达什么</h2>
+<p>连接建立不是一个瞬间，而是"密钥准备好"+"传输参数交换完成"+"HANDSHAKE_DONE 确认"这三个条件共同满足的结果。这一节来看看 QUIC 的状态机是怎么表达这个过程的。</p>
+<p>QUIC 连接的生命周期，可以用下面这张状态图来总览：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>                    OnHandshakeDone()
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  ┌────────────┐ ─────────────────────&gt; ┌────────────┐
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  │ Connecting │                        │ Connected  │
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  └────────────┘                        └────────────┘
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        │                                     │
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        │ OnClose()                           │ OnClose()
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        │ (本端主动关闭)                       │ (本端主动关闭)
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        v                                     v
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  ┌────────────┐   OnConnectionCloseFrame   ┌────────────┐
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>  │  Closing   │ ─────────────────────────&gt; │  Draining  │
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  │(重发CLOSE) │   Received() (收到对端     │ (静默等待) │
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>  └────────────┘    CONNECTION_CLOSE)       └────────────┘
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        │                                     │
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        │ OnCloseTimeout()                    │ OnCloseTimeout()
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        v                                     v
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                    ┌────────────┐
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>                    │   Closed   │
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>                    │  (终态)    │
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>                    └────────────┘
+</span></code></pre></div>
+<blockquote>
+<p>注意：Connecting 和 Connected 都可以直接被 <code>OnConnectionCloseFrameReceived()</code> 推入 Draining——只要收到对端的 CONNECTION_CLOSE，无论当前处于哪个阶段（除了已经 Closed 或 Draining），都直接进入静默等待。</p>
+</blockquote>
+<p>用两个大阶段来理解建连过程：</p>
+<p><strong>第一个阶段：connecting（连接中）</strong></p>
+<p>这是连接的全部建立过程。客户端发出第一个 Initial 包，服务器收到并开始回复握手消息，双方交换密钥、证书、传输参数——这些全部发生在 connecting 阶段内。这个阶段里，1-RTT 密钥可能已经安装了、客户端可能已经开始发送应用数据了，但连接状态仍然是 connecting——因为握手还没有被双方最终确认。</p>
+<p>推动连接离开 connecting 阶段的关键事件是什么？<strong>HANDSHAKE_DONE 帧</strong>。</p>
+<p>这里有一个容易被误解的细节：HANDSHAKE_DONE 不是"服务端先于客户端确认握手完成"的单向信号。实际的时序是这样的：</p>
+<ol>
+<li>服务端发送 TLS Finished（在 Handshake 包中）</li>
+<li>客户端收到后，发送自己的 TLS Finished</li>
+<li><strong>服务端收到客户端的 Finished 后</strong>，确认双方的 TLS 握手都已经完成，此时才发送 HANDSHAKE_DONE 帧</li>
+</ol>
+<p>也就是说，HANDSHAKE_DONE 是服务端在确认<strong>双方</strong> Finished 都交换完毕之后才发出的盖章确认。它解决的是一个信息不对称问题：客户端发出自己的 Finished 之后，并不知道服务端是否收到了——网络可能丢包。HANDSHAKE_DONE 的作用，就是让客户端确信"服务端确实收到了我的 Finished，握手真的完成了"。</p>
+<p>RFC 9000 §19.20 明确规定：<strong>HANDSHAKE_DONE 只由服务端发送</strong>。客户端如果收到了这个帧，就知道握手已经被双方确认，可以安全地丢弃 Initial 和 Handshake 阶段的密钥和包号空间，把资源释放给稳定运行期。</p>
+<p><strong>第二个阶段：connected（已连接）</strong></p>
+<p>这是连接的稳定运行状态。HANDSHAKE_DONE 收到后，transport parameter 已经交换完成，连接进入完全可用状态。双方可以自由创建 Stream、发送数据、不受限制地使用连接的全部能力。</p>
+<p>状态机的严谨性体现在这里：<strong>每个状态之间的推进，都必须有明确的事件触发</strong>。不是"差不多连上了"，而是"这个帧收到了、这个验证通过了、这个参数交换完了"，状态才能往前推进。协议里模糊一分，工程里就会多十分混乱——这正是 QUIC 状态机设计的核心原则。</p>
+<hr />
+<h2 id="114-closingdraining">11.4 一场体面的告别：closing、draining 与连接退出的秩序</h2>
+<p>连接的退出和建立一样，不是一个瞬间事件，而是一段有秩序的过程。</p>
+<p>在 TCP 的世界里，连接关闭是通过 FIN 握手来完成的——双方各发一个 FIN，等对方确认，连接就优雅地关闭了。虽然 TCP 的 TIME_WAIT 状态有时会让人头疼，但总体来说，连接的退出是有章法的。</p>
+<p>QUIC 在这方面更复杂，因为它不仅要处理正常的"体面告别"，还要在 UDP 这种无连接的传输层上确保双方对"连接已经结束"达成共识。QUIC 为此设计了两个不同的退出状态，它们的行为差异是理解关闭流程的关键。</p>
+<p><strong>Closing（关闭中）——发起方的状态</strong></p>
+<p>当一方决定关闭连接时（比如服务端要重启、客户端要退出、或者检测到协议错误），它会发送一个 <strong>CONNECTION_CLOSE</strong> 帧，然后进入 closing 状态。CONNECTION_CLOSE 帧携带着错误码（比如 0x0 表示正常关闭，其他错误码表示各种异常），让对方知道为什么连接被关闭了。RFC 9000 定义了两种 CONNECTION_CLOSE 帧：类型 0x1c 用于传输层错误（还会携带触发关闭的帧类型），类型 0x1d 用于应用层关闭（不含帧类型字段）。</p>
+<p>RFC 9000 §10.2.1 对 closing 状态有一个关键规定：<strong>在 closing 状态下，端点收到任何属于该连接的包时，都应该重发 CONNECTION_CLOSE 帧</strong>。为什么？因为对方可能没有收到第一次的 CONNECTION_CLOSE，还在那儿继续发数据。每收到一个包就重发一次 CONNECTION_CLOSE，是为了让对方"无论如何都能收到关闭通知"。当然，重发有频率限制——不能因为对方疯狂发包就无限制地回复，quicX 用 PTO（Probe Timeout）来控制重发间隔。</p>
+<p>Closing 状态下，端点<strong>不再发送除 CONNECTION_CLOSE 以外的任何数据</strong>——不发 STREAM、不发 ACK、不发 PING，只发关闭通知。</p>
+<p><strong>Draining（排水中）——接收方的状态</strong></p>
+<p>收到 CONNECTION_CLOSE 的一方，进入的是 draining 状态，而不是 closing。Draining 和 closing 的核心区别在于：<strong>draining 状态下，端点不发送任何包</strong>——连 CONNECTION_CLOSE 都不发。</p>
+<p>为什么？因为它已经知道对方要关闭了（它收到了 CONNECTION_CLOSE），对方也知道自己发了关闭通知——此时再回复任何东西都是多余的。Draining 状态唯一做的事就是<strong>安静地等待</strong>——等一段时间（通常是 3 × PTO），让在途的数据包自然消亡，然后才删除连接状态。</p>
+<p>这个"安静等待"的设计是为了防止一种微妙的错误：如果收到 CONNECTION_CLOSE 后立刻删除连接状态，那些还在网络中飞行的、属于这个连接的包到达后就没有人能处理它们了——更糟的是，如果同一个四元组上很快建了一条新连接，这些"遗留包"可能被错误地当作新连接的数据。等待一个排水期，就是为了让这些在途包在到达后被安全地丢弃。</p>
+<p><strong>两个状态的区别总结</strong>：</p>
+<ul>
+<li><strong>Closing</strong>：我发了 CONNECTION_CLOSE，但对方可能还没收到 → 所以我还要对收到的包重发 CONNECTION_CLOSE</li>
+<li><strong>Draining</strong>：我收到了对方的 CONNECTION_CLOSE → 双方已经知情，我安静等待就好</li>
+</ul>
+<p>一个生产级的 QUIC 实现，最容易在退出路径上出 bug 的地方是：</p>
+<ul>
+<li>收到了 CONNECTION_CLOSE 但还在发送数据——应该立刻停止所有发送</li>
+<li>draining 超时时间设置不合理——太短会导致在途包污染新连接，太长会浪费资源</li>
+<li>正在 closing 时又收到了对方的 CONNECTION_CLOSE——应该从 closing <strong>转为 draining</strong>，因为此时双方已经互相通知，closing 方不再需要重发 CONNECTION_CLOSE。RFC 9000 §10.2.2 明确指出：收到 CONNECTION_CLOSE 的端点进入 draining 状态，无论它之前处于什么状态</li>
+</ul>
+<p>还有一个容易被忽略的细节：<strong>closing 和 draining 的超时计算基于 PTO（Probe Timeout）</strong>。RFC 9000 建议等待时间不低于 3 × PTO。PTO 的计算依赖 SRTT 和 RTTVAR——如果连接刚建立、还没有足够的 RTT 样本，quicX 会设置一个最低 500ms 的下限，防止超时时间过短。</p>
+<p>这些问题听起来是"工程细节"，但实际上是协议设计的边界问题。<strong>QUIC 把关闭流程做得这么复杂，恰恰是因为它要在无连接的 UDP 之上，重建"有秩序的告别"。</strong></p>
+<hr />
+<h2 id="115-stateless-reset">11.5 断尾求生：Stateless Reset 为什么不属于正常告别</h2>
+<p>上一节我们讲了正常的关闭流程——closing + draining + CONNECTION_CLOSE。但 QUIC 还有另一种"死亡方式"，它不属于正常告别，而是<strong>异常兜底</strong>，这就是 <strong>Stateless Reset</strong>（无状态重置）。</p>
+<p>什么时候会用到 Stateless Reset？</p>
+<p>想象这样一个场景：服务器重启了，内存里的连接状态全丢掉了。但客户端不知道服务器已经"失忆"，还在那儿继续发数据。服务器收到这些数据后，发现自己根本不记得这个连接——没有流、没有密钥、没有流控状态——这堆数据该怎么处理？</p>
+<p>服务器有两个选择：</p>
+<ol>
+<li><strong>正常关闭</strong>：发一个 CONNECTION_CLOSE，解释一下"对不起我不认识你了"。但问题是，服务器此时已经没有这个连接的状态了，它甚至不知道这个连接最初是怎么建立的。发 CONNECTION_CLOSE 需要一些基本的状态来构建这个帧，如果状态全丢了，可能发不出来。</li>
+<li><strong>Stateless Reset</strong>：直接回一个特殊的 Stateless Reset 包，告诉客户端"我不认识这个连接，你从头开始吧"。</li>
+</ol>
+<p>Stateless Reset 的设计就是为了解决这种"状态丢失"的极端情况。它不需要任何连接状态——服务器只需要一个预先共享的秘密：<strong>Stateless Reset Token</strong>。这个 16 字节的令牌在建连时通过 transport parameter 的 <code>stateless_reset_token</code> 字段交给客户端（后续的新 Connection ID 也通过 NEW_CONNECTION_ID 帧携带各自的 Token）。服务器重启后，只要能用同一个密钥从 Connection ID 重新派生出这个 Token，就能构造一个合法的 Stateless Reset 包——客户端验证包尾部的 Token 匹配后，就知道对方确实是"那个曾经认识我的服务器"。</p>
+<p><strong>但 Stateless Reset 不是正常关闭流程的一部分</strong>。它们有几个关键区别：</p>
+<ul>
+<li><strong>CONNECTION_CLOSE</strong> 是"我们商量好了一起关掉连接"，是双向共识</li>
+<li><strong>Stateless Reset</strong> 是"我不认识这个连接了，你看着办吧"，是单方面"失忆"</li>
+</ul>
+<p>从语义上说，Stateless Reset 更像是一种"异常兜底"——当正常流程走不通时的一种紧急刹车。它告诉客户端：连接状态已经丢失了，你不需要等待 closing/draining 的流程，直接重新建连吧。</p>
+<p>对于实现者来说，理解这两种"死亡方式"的区别非常重要：</p>
+<ul>
+<li><strong>正常关闭</strong>（closing/draining/CONNECTION_CLOSE）是有秩序的告别，双方有共识，资源会逐步释放</li>
+<li><strong>Stateless Reset</strong> 是紧急刹车，是"我不认识你了"的单方面宣言，客户端收到后应该立刻尝试重新建连，而不是试图恢复旧连接</li>
+</ul>
+<p>一个健壮的 QUIC 实现必须同时处理好这两条路径——既要有优雅关闭的能力，也要有异常兜底的准备。</p>
+<hr />
+<h2 id="116-quicx">11.6 quicX 的生命曲线：状态机、参数安装与关闭路径如何落地</h2>
+<p>理解了协议层面的状态机和关闭语义，我们来看 quicX 是怎么把它们落进代码的。连接生命周期管理涉及三个核心模块的协作：<strong>ConnectionStateMachine</strong>（状态机）、<strong>TransportParam</strong>（传输参数）和 <strong>ConnectionCloser</strong>（关闭管理器）。它们被 <code>BaseConnection</code> 持有，彼此解耦又通过事件和回调紧密联动。</p>
+<p><strong>第一，ConnectionStateMachine——五个状态，四条转换路径。</strong></p>
+<p>quicX 的连接状态机把协议规定的生命周期压缩成五个枚举值：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">enum</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">ConnectionStateType</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="n">kStateConnecting</span><span class="p">,</span><span class="w">   </span><span class="c1">// 握手进行中</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="n">kStateConnected</span><span class="p">,</span><span class="w">    </span><span class="c1">// 稳定运行</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="n">kStateClosing</span><span class="p">,</span><span class="w">      </span><span class="c1">// 已发 CONNECTION_CLOSE，等待 1×PTO</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="n">kStateDraining</span><span class="p">,</span><span class="w">     </span><span class="c1">// 收到对端 CONNECTION_CLOSE，静默等待 3×PTO</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="n">kStateClosed</span><span class="p">,</span><span class="w">       </span><span class="c1">// 终态，资源可回收</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">};</span>
+</span></code></pre></div>
+<p>状态之间的推进不是靠条件判断的模糊逻辑，而是四个明确的事件方法：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">ConnectionStateMachine::OnHandshakeDone</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">state_</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">ConnectionStateType</span><span class="o">::</span><span class="n">kStateConnecting</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">        </span><span class="n">SetState</span><span class="p">(</span><span class="n">ConnectionStateType</span><span class="o">::</span><span class="n">kStateConnected</span><span class="p">);</span><span class="w">      </span><span class="c1">// ← 唯一的建连完成路径</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p">}</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="kt">void</span><span class="w"> </span><span class="nf">ConnectionStateMachine::OnClose</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">state_</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">ConnectionStateType</span><span class="o">::</span><span class="n">kStateConnected</span><span class="w"> </span><span class="o">||</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">        </span><span class="n">state_</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">ConnectionStateType</span><span class="o">::</span><span class="n">kStateConnecting</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">        </span><span class="n">SetState</span><span class="p">(</span><span class="n">ConnectionStateType</span><span class="o">::</span><span class="n">kStateClosing</span><span class="p">);</span><span class="w">         </span><span class="c1">// ← 本端主动关闭</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="p">}</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="kt">void</span><span class="w"> </span><span class="nf">ConnectionStateMachine::OnConnectionCloseFrameReceived</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">state_</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">ConnectionStateType</span><span class="o">::</span><span class="n">kStateClosed</span><span class="w"> </span><span class="o">&amp;&amp;</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="w">        </span><span class="n">state_</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">ConnectionStateType</span><span class="o">::</span><span class="n">kStateDraining</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="w">        </span><span class="n">SetState</span><span class="p">(</span><span class="n">ConnectionStateType</span><span class="o">::</span><span class="n">kStateDraining</span><span class="p">);</span><span class="w">        </span><span class="c1">// ← 收到对端关闭</span>
+</span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="p">}</span>
+</span><span id="__span-2-20"><a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>
+</span><span id="__span-2-21"><a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="kt">void</span><span class="w"> </span><span class="nf">ConnectionStateMachine::OnCloseTimeout</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-22"><a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">state_</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">ConnectionStateType</span><span class="o">::</span><span class="n">kStateClosing</span><span class="w"> </span><span class="o">||</span>
+</span><span id="__span-2-23"><a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a><span class="w">        </span><span class="n">state_</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">ConnectionStateType</span><span class="o">::</span><span class="n">kStateDraining</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-2-24"><a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a><span class="w">        </span><span class="n">SetState</span><span class="p">(</span><span class="n">ConnectionStateType</span><span class="o">::</span><span class="n">kStateClosed</span><span class="p">);</span><span class="w">          </span><span class="c1">// ← 超时后终态</span>
+</span><span id="__span-2-25"><a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-2-26"><a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>注意 <code>OnConnectionCloseFrameReceived()</code> 的守卫条件——它排除了 Closed 和 Draining，但<strong>没有排除 Closing</strong>。这意味着：正在 closing 的端点收到了对方的 CONNECTION_CLOSE，会从 closing 转入 draining。这正是 11.4 节提到的"双方互相通知后不再需要重发"的精确落地。</p>
+<p>状态机还通过 <code>IConnectionStateListener</code> 接口把每次状态变更通知给 <code>BaseConnection</code>。<code>SetState()</code> 内部的 switch-case 会调用 <code>listener_-&gt;OnStateToClosing()</code> / <code>OnStateToDraining()</code> / <code>OnStateToClosed()</code> 等回调，<code>BaseConnection</code> 在这些回调里执行真正的清理动作——清空重传队列、构造 CONNECTION_CLOSE 帧、设置超时定时器。状态机只管"什么时候该做什么"，不管"具体怎么做"。</p>
+<p>状态机还提供了一组查询方法来约束连接行为的边界：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kt">bool</span><span class="w"> </span><span class="nf">AllowSend</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="p">;</span><span class="w">          </span><span class="c1">// Connecting || Connected 才允许发包</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kt">bool</span><span class="w"> </span><span class="nf">CanSendData</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="p">;</span><span class="w">        </span><span class="c1">// 仅 Connected 才允许发应用数据</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kt">bool</span><span class="w"> </span><span class="nf">CanReceiveData</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="p">;</span><span class="w">     </span><span class="c1">// Connected || Closing 才处理数据</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="kt">bool</span><span class="w"> </span><span class="nf">ShouldIgnorePackets</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="p">;</span><span class="w"> </span><span class="c1">// Draining || Closed 直接丢弃</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="kt">bool</span><span class="w"> </span><span class="nf">IsTerminating</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="p">;</span><span class="w">      </span><span class="c1">// Closing || Draining || Closed</span>
+</span></code></pre></div>
+<p><code>AllowSend()</code> 和 <code>CanSendData()</code> 的区别值得注意：Connecting 阶段允许发送握手包（<code>AllowSend() == true</code>），但不允许发送应用数据（<code>CanSendData() == false</code>）。这两个方法的分离，就是"握手完成≠连接建立"在代码层面的体现。</p>
+<p><strong>第二，TransportParam——协商的落地是一次 Merge。</strong></p>
+<p>quicX 没有单独的"传输参数管理器"类——<code>TransportParam</code> 自己就承担了编解码、协商合并和通知的全部职责。它的字段直接对应 RFC 9000 §18 定义的传输参数：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">TransportParam</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">original_destination_connection_id_</span><span class="p">;</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">max_idle_timeout_</span><span class="p">;</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">stateless_reset_token_</span><span class="p">;</span><span class="w">  </span><span class="c1">// 仅服务端</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">initial_max_data_</span><span class="p">;</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">initial_max_stream_data_bidi_local_</span><span class="p">;</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">initial_max_stream_data_bidi_remote_</span><span class="p">;</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">initial_max_streams_bidi_</span><span class="p">;</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">initial_max_streams_uni_</span><span class="p">;</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">disable_active_migration_</span><span class="p">;</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">active_connection_id_limit_</span><span class="p">;</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">    </span><span class="c1">// ... 省略其余字段</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="p">};</span>
+</span></code></pre></div>
+<p>连接建立时，<code>Init()</code> 从本地配置加载参数，然后触发所有监听器。当对端的传输参数在 TLS 握手中到达后，<code>Merge()</code> 把双方的参数合并成最终生效值——关键在于合并策略：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kt">bool</span><span class="w"> </span><span class="nf">TransportParam::Merge</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">TransportParam</span><span class="o">&amp;</span><span class="w"> </span><span class="n">tp</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span><span class="n">max_idle_timeout_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span><span class="n">tp</span><span class="p">.</span><span class="n">max_idle_timeout_</span><span class="p">,</span><span class="w"> </span><span class="n">max_idle_timeout_</span><span class="p">);</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="n">initial_max_data_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span><span class="n">tp</span><span class="p">.</span><span class="n">initial_max_data_</span><span class="p">,</span><span class="w"> </span><span class="n">initial_max_data_</span><span class="p">);</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="n">initial_max_streams_bidi_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span><span class="n">tp</span><span class="p">.</span><span class="n">initial_max_streams_bidi_</span><span class="p">,</span><span class="w"> </span><span class="n">initial_max_streams_bidi_</span><span class="p">);</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="c1">// ... 数值型参数一律取 std::min（取较保守的一方）</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="n">disable_active_migration_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">disable_active_migration_</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">tp</span><span class="p">.</span><span class="n">disable_active_migration_</span><span class="p">;</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="c1">// ↑ 布尔型用逻辑 OR：任何一方禁用迁移，连接就不能迁移</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">listener</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">transport_param_listeners_</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">        </span><span class="n">listener</span><span class="p">(</span><span class="o">*</span><span class="k">this</span><span class="p">);</span><span class="w">  </span><span class="c1">// 合并完成后立即通知所有监听器</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><code>std::min</code> 策略的含义是：<strong>能力协商永远向保守方看齐</strong>。如果客户端说"我能接受 100 条流"，服务端说"我只给你 10 条"，最终结果就是 10 条。这和 TLS 的密码套件协商不同——TLS 协商的是"挑一个双方都支持的"，而 transport parameter 协商的是"取一个双方都能承受的"。</p>
+<p><code>Merge()</code> 结束后触发的监听器回调，会把新参数推送到流控制器、流管理器等下游模块——<code>max_stream_data</code> 安装后，发送端立刻就知道"这个 Stream 最多能发多少数据了"。这个推送是同步的，不存在"参数已合并但下游还不知道"的窗口期。</p>
+<p>Transport parameter 的编解码使用 QUIC 的变长整数（varint）格式，按 type-length-value 三元组排列。每个参数先写 type（如 <code>kMaxIdleTimeout = 0x01</code>），再写 length，最后写 value。这和 TLS 扩展的编码方式一致——毕竟它就是作为 TLS 扩展 <code>quic_transport_parameters</code>（0x39）嵌入握手消息的。</p>
+<p><strong>第三，ConnectionCloser——两条关闭路径的交通管制员。</strong></p>
+<p><code>ConnectionCloser</code> 是关闭逻辑的集中管理点。它持有状态机和发送管理器的引用，但不拥有它们——职责边界清晰：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">ConnectionCloser</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span><span class="c1">// 依赖注入</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="n">ConnectionStateMachine</span><span class="o">&amp;</span><span class="w"> </span><span class="n">state_machine_</span><span class="p">;</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="n">SendManager</span><span class="o">&amp;</span><span class="w"> </span><span class="n">send_manager_</span><span class="p">;</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span><span class="n">TransportParam</span><span class="o">&amp;</span><span class="w"> </span><span class="n">transport_param_</span><span class="p">;</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">    </span><span class="n">ConnectionCloseCallback</span><span class="w"> </span><span class="n">connection_close_cb_</span><span class="p">;</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">    </span><span class="c1">// 关闭信息（用于 CONNECTION_CLOSE 重传）</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">    </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">closing_error_code_</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">    </span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">closing_trigger_frame_</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">closing_reason_</span><span class="p">;</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="w">    </span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">last_connection_close_retransmit_time_</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
+</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">    </span><span class="c1">// 优雅关闭状态</span>
+</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">graceful_closing_pending_</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">    </span><span class="n">TimerTask</span><span class="w"> </span><span class="n">graceful_close_timer_</span><span class="p">;</span>
+</span><span id="__span-6-17"><a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>
+</span><span id="__span-6-18"><a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="w">    </span><span class="c1">// 回调去重</span>
+</span><span id="__span-6-19"><a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">connection_close_cb_invoked_</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+</span><span id="__span-6-20"><a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a><span class="p">};</span>
+</span></code></pre></div>
+<p><code>ConnectionCloser</code> 同时管理两条路径。<strong>优雅关闭</strong>时，<code>StartGracefulClose()</code> 会先检查是否有待发数据：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kt">bool</span><span class="w"> </span><span class="nf">ConnectionCloser::StartGracefulClose</span><span class="p">(</span><span class="n">ActiveSendCallback</span><span class="w"> </span><span class="n">active_send_cb</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">send_manager_</span><span class="p">.</span><span class="n">GetSendOperation</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">SendOperation</span><span class="o">::</span><span class="n">kAllSendDone</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">        </span><span class="c1">// 还有数据没发完，先等</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">        </span><span class="n">graceful_closing_pending_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">        </span><span class="n">graceful_close_timer_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimerTask</span><span class="p">(</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">            </span><span class="n">std</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">ConnectionCloser</span><span class="o">::</span><span class="n">OnGracefulCloseTimeout</span><span class="p">,</span><span class="w"> </span><span class="k">this</span><span class="p">));</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">        </span><span class="n">event_loop_</span><span class="o">-&gt;</span><span class="n">AddTimer</span><span class="p">(</span><span class="n">graceful_close_timer_</span><span class="p">,</span><span class="w"> </span><span class="n">GetCloseWaitTime</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span><span class="w">  </span><span class="c1">// ← 进入等待，不立即转状态</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">    </span><span class="p">}</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">    </span><span class="c1">// 没有待发数据，直接进入 Closing</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">    </span><span class="n">closing_error_code_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">QuicErrorCode</span><span class="o">::</span><span class="n">kNoError</span><span class="p">;</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">    </span><span class="n">state_machine_</span><span class="p">.</span><span class="n">OnClose</span><span class="p">();</span><span class="w">  </span><span class="c1">// ← 触发状态机转换</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>这里有一个工程上的权衡：优雅关闭不是无限等待。<code>GetCloseWaitTime() * 3</code> 设置了一个超时（大约 3 倍 PTO 再乘以 3），超时后 <code>OnGracefulCloseTimeout()</code> 会强制进入 Closing——不能因为数据发不完就永远不关闭连接。</p>
+<p><strong>立即关闭</strong>则更简单——<code>StartImmediateClose()</code> 先取消优雅关闭（如果有的话），然后直接触发状态机转换：</p>
+<div class="language-cpp highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kt">void</span><span class="w"> </span><span class="nf">ConnectionCloser::StartImmediateClose</span><span class="p">(</span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">error</span><span class="p">,</span><span class="w"> </span><span class="kt">uint16_t</span><span class="w"> </span><span class="n">trigger_frame</span><span class="p">,</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">reason</span><span class="p">,</span><span class="w"> </span><span class="n">ActiveSendCallback</span><span class="w"> </span><span class="n">active_send_cb</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span><span class="n">CancelGracefulClose</span><span class="p">();</span><span class="w">  </span><span class="c1">// ← 如果优雅关闭在等待，立刻取消</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">    </span><span class="n">closing_error_code_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">error</span><span class="p">;</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">    </span><span class="n">closing_trigger_frame_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">trigger_frame</span><span class="p">;</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">    </span><span class="n">closing_reason_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reason</span><span class="p">;</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">    </span><span class="n">state_machine_</span><span class="p">.</span><span class="n">OnClose</span><span class="p">();</span><span class="w">  </span><span class="c1">// ← 直接转 Closing</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>进入 Closing 后，每收到一个包都要判断是否需要重发 CONNECTION_CLOSE。<code>ShouldRetransmitConnectionClose()</code> 用 PTO 做节流——每个 PTO 周期最多重发一次，避免被对方的发包洪水淹没。</p>
+<p>Closing/Draining 超时后，状态机推入 <code>kStateClosed</code>，<code>BaseConnection::OnStateToClosed()</code> 回调应用层——连接彻底死亡，资源可以回收了。</p>
+<p><strong>三个模块的协作关系</strong>：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>BaseConnection（实现 IConnectionStateListener 接口）
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>  ├── ConnectionStateMachine    → &quot;什么时候该做什么&quot;
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>  ├── TransportParam            → &quot;当前能做什么&quot;
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  ├── ConnectionCloser          → &quot;什么时候不能做了、该怎么停&quot;
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  ├── FrameProcessor            → 帧分发（CONNECTION_CLOSE / HANDSHAKE_DONE 回调入口）
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  ├── SendManager               → 发送控制
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  └── TimerCoordinator          → 定时器协调（空闲超时 + PTO 检查）
+</span></code></pre></div>
+<p><code>ConnectionStateMachine</code> 通过 Observer 模式通知 <code>BaseConnection</code> 状态变更，<code>BaseConnection</code> 在回调中协调各组件完成实际的清理操作。<code>ConnectionCloser</code> 封装了关闭路径的所有状态和定时器逻辑，让 <code>BaseConnection</code> 的关闭代码不至于变成一团 if-else 泥潭。<code>TransportParam</code> 的监听器机制则让参数变更自动扩散到流控制器和流管理器，不需要手动同步。</p>
+<p>这三个模块各司其职，但严格遵守一个原则：<strong>状态推进是唯一的真相来源</strong>。任何行为变更（能不能发数据、该不该处理包、要不要重发 CONNECTION_CLOSE）都先查状态机，再做决定。没有任何模块能绕过状态机直接改变连接的行为——这就是"状态机是边界墙"在工程里的落地方式。</p>
+<hr />
+<h2 id="117">11.7 活着，比连上更难</h2>
+<p>状态机不是装饰，而是连接正确性的边界墙。</p>
+<p>它把含混的人类判断——"差不多已经连上了"、"应该可以发数据了吧"——变成严格的协议边界：必须收到 HANDSHAKE_DONE 才能进入 Connected，必须等 draining 结束才能删除状态，正在 closing 时收到对端的 CONNECTION_CLOSE 就转入 draining 不再重发。每一条边界都是某个曾经出过的 bug 凝固成的规则。</p>
+<p>Transport parameter 把能力协商从"隐式假设"变成"显式契约"——双方不用猜对方能做什么，所有边界在握手期就白纸黑字地定好了。而关闭路径的两张面孔——优雅退出的 closing/draining 和异常兜底的 Stateless Reset——确保连接无论以何种方式死去，都不会留下能污染后续连接的残骸。</p>
+<p>真正难的，不是让连接开始，而是让它始终处在正确状态。<strong>连接的生命周期管理，本质上是一场对模糊性的持续消灭。</strong></p>
+<p>既然连接已经稳定存在了，下一个问题自然浮现：一个已经"活着"的连接，能否脱离原来的 IP 四元组继续活下去？这就是 Connection ID 与连接迁移的领地。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="页脚" >
+        
+          
+          <a href="../10_address_validation/" class="md-footer__link md-footer__link--prev" aria-label="上一页: 10. 护城河: 地址验证与防放大攻击">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                上一页
+              </span>
+              <div class="md-ellipsis">
+                10. 护城河: 地址验证与防放大攻击
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../12_connection_id_and_migration/" class="md-footer__link md-footer__link--next" aria-label="下一页: 12. 会飞的连接: Connection ID 与路径迁移">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                下一页
+              </span>
+              <div class="md-ellipsis">
+                12. 会飞的连接: Connection ID 与路径迁移
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.indexes", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

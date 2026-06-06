@@ -1,0 +1,2474 @@
+
+<!doctype html>
+<html lang="zh" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="从协议设计到 quicX 网络库实践">
+      
+      
+        <meta name="author" content="ekko">
+      
+      
+      
+        <link rel="prev" href="../00_intro/">
+      
+      
+        <link rel="next" href="../14_pn_space_and_ack/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.3">
+    
+    
+      
+        <title>13. 可靠性的代价: QUIC 为什么不再照搬 TCP - 深入解析 QUIC 与 HTTP/3</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#13" class="md-skip">
+          跳转至
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="页眉">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-header__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            深入解析 QUIC 与 HTTP/3
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              13. 可靠性的代价: QUIC 为什么不再照搬 TCP
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到暗黑模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到暗黑模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="搜索" placeholder="搜索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="查找">
+        
+        <button type="reset" class="md-search__icon md-icon" title="清空当前内容" aria-label="清空当前内容" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            正在初始化搜索引擎
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="导航栏" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="深入解析 QUIC 与 HTTP/3" class="md-nav__button md-logo" aria-label="深入解析 QUIC 与 HTTP/3" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    深入解析 QUIC 与 HTTP/3
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/caozhiyi/quicx-book" title="前往仓库" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    caozhiyi/quicx-book
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    序言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷一: 基石时代 (基础设施)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷一: 基石时代 (基础设施)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    0. 卷一导读：在用户态重建网络世界的代价
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/01_memory_pool/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. 内存的七巧板: 连接级内存池的设计
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/02_zero_copy_buffer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. 拷贝的艺术: 零拷贝 Buffer 的生存哲学
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/03_network_io_abstraction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. 管道与枢纽: 网络 IO 的架构抽象
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/04_thread_model_and_lockfree/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. 打破全局锁: One-Loop-Per-Thread 的无锁演进
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../01_infrastructure/05_async_timer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. 时空的刻度: 高效定时器与事件循环的融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷二: 破冰之旅 (QUIC 连接的建立与终止)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷二导读：打破四元组枷锁，重建连接的定义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/06_packet_and_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6. 万物开端: QUIC Packet 解剖与连接世界地图
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/07_initial_keys_and_crypto_frame/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    7. 公开的秘密: Initial 密钥与 CRYPTO Frame 的起步逻辑
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/08_handshake_and_tls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    8. 破冰之握: 连接建立与 TLS 融合
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/09_zero_rtt_and_session_resume/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    9. 零等待的奇迹: 0-RTT 与会话恢复
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/10_address_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    10. 护城河: 地址验证与防放大攻击
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/11_connection_state_and_params/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    11. 连接的生死簿: 状态机与传输参数协商
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../02_connection/12_connection_id_and_migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    12. 会飞的连接: Connection ID 与路径迁移
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷三: 字节的契约 (可靠传输)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    重构可靠传输：从包级确认到语义重传
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. 可靠性的代价: QUIC 为什么不再照搬 TCP
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    13. 可靠性的代价: QUIC 为什么不再照搬 TCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#131-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.1 TCP 的可靠性是一条链
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#132" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.2 一条链的代价：为什么同一个序号不能身兼三职
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#133-quic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.3 QUIC 的回答：三层各自命名，各自演进
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13.3 QUIC 的回答：三层各自命名，各自演进">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#packet-number" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一层：Packet Number——确认层
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frame" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二层：Frame 语义——恢复层
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stream-offset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三层：Stream Offset——交付层
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        拓扑变化的一句话总结
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#134" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.4 三层之间的协作合约
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#135-quicx" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.5 quicX 为什么必须自己维护这套系统
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#136" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.6 四章各打开一层
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../14_pn_space_and_ack/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    14. ACK 的艺术: 序列号空间与确认边界
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../15_loss_detection_and_pto/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    15. 消失与追踪: 丢包探测与 PTO 幽灵
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../16_retransmission_semantics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    16. 重传的边界: 重发的不是 Packet, 而是语义
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../17_packet_builder_and_encryption/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    17. 发包管线: PacketBuilder 与加密层调度
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../18_timer_and_lifecycle_war_story/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    18. 刺刀见红: 异步定时器与连接生命周期的暗战
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷四: 速度与节奏 (拥塞控制)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    拥塞控制：网络管道的物理学与控制论
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/19_rtt_and_cwnd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    19. 管道的容量: RTT 测量与拥塞窗口的第一原理
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/20_reno_and_aimd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    20. 丢包即信号: Reno 与 AIMD 的经典控制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/21_cubic_and_high_bdp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    21. 立方的野心: Cubic 与高 BDP 网络的攻防
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/22_bbr_evolution_and_coexistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    22. 模型的革命: BBR 三代演进与算法共存
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../04_congestion/23_bbr_in_quicx/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    23. 速度的手术台: quicX 中拥塞控制的工程实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷五: 河流与闸门 (多路复用与流控)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    多路复用与流控：并发的秩序与背压机制
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/24_multiplexing_history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    24. 从队头阻塞到传输层并发: Stream 为什么是 QUIC 的另一半身体
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/25_stream_state_machine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    25. 流的诞生与终结: 发送与接收状态机
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/26_flow_control_windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    26. 双层流控与背压: 额度如何限制流，闸门关上后又如何打开
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../05_flow_and_stream/27_blocked_and_max_frames/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    27. quicX 的 Stream 管理: 从 pending 到 manager 的工程全景
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷六: 抵达彼岸 (HTTP/3 与 QPACK)
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    抵达彼岸: HTTP/3 与乱序世界的契约
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/28_http3_frame_anatomy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    28. 换一张地图: HTTP/3 的帧体系与控制面
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/29_http3_mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    29. 重新映射: 从 QUIC 流到请求与响应
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/30_qpack_compression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    30. QPACK: 乱序世界里的头压缩引擎
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../06_http3/31_http3_connection_lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    31. 一条 HTTP/3 连接的一生
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    卷七: 生产级修养
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    卷七: 生产级修养
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/00_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    生产级修养：从可用网络协议到工业级基础设施
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/32_metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    32. 透明的眼睛: Metrics、日志上下文与可观测性基座
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/33_qlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    33. 黑匣子: Qlog 可观测性实践
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/34_protocol_upgrade/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    34. 通天塔的阶梯: HTTP 协议协商与版本升级
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../07_engineering/35_interop_test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    35. 试炼场: 与 Nginx / Quiche 的互联互通
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目录">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目录
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#131-tcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.1 TCP 的可靠性是一条链
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#132" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.2 一条链的代价：为什么同一个序号不能身兼三职
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#133-quic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.3 QUIC 的回答：三层各自命名，各自演进
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13.3 QUIC 的回答：三层各自命名，各自演进">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#packet-number" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一层：Packet Number——确认层
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frame" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二层：Frame 语义——恢复层
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stream-offset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三层：Stream Offset——交付层
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        拓扑变化的一句话总结
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#134" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.4 三层之间的协作合约
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#135-quicx" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.5 quicX 为什么必须自己维护这套系统
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#136" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13.6 四章各打开一层
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="13">13. 可靠性的拓扑重构：从单链到三层网</h1>
+<p>第 6 章从全局视角回答了"QUIC 为什么要在 UDP 上另起炉灶"——三道伤疤、两层信封、一条从 Datagram 到 Frame 的拆包路径。结论是一个结构模型：Packet 层负责路由和保护，Frame 层负责语义，每一层只做一件事。</p>
+<p>我们现在要做的是把镜头对准可靠性的<strong>内部结构</strong>，回答一个更精确的问题：TCP 的可靠性机制内部到底长什么样？QUIC 为什么要把它拆成完全不同的样子？</p>
+<p>答案不是"TCP 太慢"或"TCP 太老"——这些是症状，不是诊断。真正的诊断是一个结构性问题：<strong>TCP 把三个本该独立的职责——确认、恢复、交付——绑在了同一个序号上。</strong> 这种绑定让整条可靠性链变成了一个牵一发动全身的单点故障结构。QUIC 的回答也不是修补某个环节，而是一次拓扑重构：把一条链拆成三层网。</p>
+<p>一句话概括这次重构的结果：<strong>TCP 的可靠性是一条链，QUIC 的可靠性是三层网。确认不拖交付，交付不拖恢复，恢复不拖确认。</strong></p>
+<hr />
+<h2 id="131-tcp">13.1 TCP 的可靠性是一条链</h2>
+<p>大多数程序员对 TCP 可靠性的理解是一堆散装功能的集合：有序号、有 ACK、有重传、有超时。但如果你退后一步俯瞰，这些功能不是散装的，而是一条严格的线性链：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>字节序号 → ACK 确认 → 超时判丢 → 重传补洞 → 按序交付
+</span></code></pre></div>
+<p>五个环节首尾相连，前一个环节的输出直接驱动下一个环节的输入。发送端给每个字节编号，接收端用 ACK 告诉发送端"我收到了哪些字节"，发送端如果超过一定时间没有收到某些字节的确认就判定丢失，丢失后触发重传把那些字节重新发出去，接收端收到后按序号顺序排列并交付给应用层。</p>
+<p>这条链有一个极其诱人的特性：<strong>整条链只有一个命名空间。</strong> 从头到尾只有一套字节序号——序号既用来标记数据在字节流中的位置，也用来确认哪些数据已经收到，还用来决定重传从哪里开始。一套序号走天下，逻辑清晰，实现简洁，沿着这条链走一遍就能理解全部。</p>
+<p>这种简洁曾经如此成功，以至于几代程序员养成了一个朴素的信念：<strong>可靠性是免费的。</strong> 你调用 <code>send()</code>，字节就一定会到达对端；你调用 <code>recv()</code>，读到的字节一定是按顺序排列的。丢包、乱序、重传——这些脏活全部被内核协议栈消化掉了，你的代码里看不到任何痕迹。</p>
+<p>但"简洁"和"简单"是两回事。这条链之所以简洁，是因为它把所有复杂性都压缩到了一个序号上。当这个序号承载的职责越来越多、需要服务的场景越来越复杂的时候，简洁就变成了脆弱。</p>
+<hr />
+<h2 id="132">13.2 一条链的代价：为什么同一个序号不能身兼三职</h2>
+<p>TCP 的序号不只是一个编号。它同时承担着三个完全不同维度的职责——而这种绑定，正是整条可靠性链的结构性代价。</p>
+<p><strong>序号的第一职：定位。</strong> 它标记"这段数据在字节流中的位置"。接收端收到数据后，根据序号把数据放到字节流中正确的位置，然后按顺序交付给应用层。这是交付用的。</p>
+<p><strong>序号的第二职：确认。</strong> ACK 报文告诉发送端"我已经收到了序号 X 之前的所有数据"。发送端据此判断哪些数据已经被收到、哪些还在路上、哪些可能已经丢了。这是确认用的。</p>
+<p><strong>序号的第三职：恢复。</strong> 当发送端判定某些数据丢失后，重传机制根据序号决定"从哪里开始重新发送"。重传包携带的仍然是原来那个序号——因为接收端需要用这个序号把数据放回字节流中的正确位置。这是恢复用的。</p>
+<p>一个序号，同时服务于交付、确认和恢复三个维度。在简单场景下，这种设计运转良好——但一旦这三个维度的需求开始冲突，问题就来了。</p>
+<p><strong>第一个冲突：确认和恢复相互污染。</strong> 当一个包丢了，TCP 重传时用的是<strong>同一个序号</strong>。这看起来合理——接收端需要知道这是哪段数据嘛。但问题出在发送端这边：当发送端收到一个 ACK 确认了序号 1000-2000 的数据时，它<strong>无法区分</strong>这个 ACK 确认的是第一次发送的原始包，还是后来重传的那个包。这就是经典的 TCP 重传歧义（retransmission ambiguity）。</p>
+<p>重传歧义带来的直接后果是：<strong>RTT 采样被污染了。</strong> RTT 的计算依赖于"发送时刻"和"确认时刻"之间的差值。如果发送端不知道 ACK 确认的是原始包还是重传包，它就不知道该用哪个发送时刻来计算 RTT。Karn's Algorithm 的做法是：一旦发生重传，就放弃这次 RTT 采样。这意味着在丢包频繁的网络里——恰恰是最需要精确 RTT 的时候——TCP 反而没法好好采样。</p>
+<p><strong>第二个冲突：确认和交付互相拖拽。</strong> TCP 的按序交付是"全局"的——它不是针对某一路数据，而是针对整条连接上的所有字节。当 HTTP/2 在一条 TCP 连接上跑多个 Stream 时，如果 Stream A 的数据丢了一段，即使 Stream B、Stream C 的数据已经完好无损地到达了接收端，它们也必须在 TCP 缓冲区里干等——因为它们的序号排在 Stream A 那个洞的后面，TCP 的交付逻辑不允许跳过这个洞。</p>
+<p><strong>确认还没完成的事，拖住了交付已经完成的事。</strong> 这不是某个实现的 bug，而是"一个序号身兼三职"这种结构注定的副作用。</p>
+<p>打个比方：一个员工同时兼任前台接待、财务会计和安保巡逻。平时三个岗位轮着来，勉强也能转。但一旦有个快递丢了需要追查（恢复），前台必须停下来核对发送记录，会计也得停下来核对账目，安保巡逻更是暂停——因为这三件事全绑在同一个人身上，一件事出了状况，另外两件事也得跟着停下来等。</p>
+<p>TCP 的可靠性链就是这个状态。它的结构性问题不是"性能不好"——在单流、低丢包的简单场景里，这条链跑得很好。问题是：<strong>当确认、恢复、交付这三个维度各自有独立演进的需求时，同一个序号成了它们共同的瓶颈。</strong> 一个维度被卡住，另外两个维度跟着陪葬。</p>
+<p>QUIC 要做的，就是解开这个绑定。</p>
+<hr />
+<h2 id="133-quic">13.3 QUIC 的回答：三层各自命名，各自演进</h2>
+<p>理解了 TCP 的问题——"一个序号身兼三职导致三个维度互相拖拽"——QUIC 的核心设计决策就变得自然了：<strong>把确认、恢复、交付分配到三个独立的命名空间，让每个维度用自己的序号、按自己的节奏演进。</strong></p>
+<p>这不是一次优化，而是一次拓扑重构。TCP 的可靠性是一条链，所有环节串在一条线上；QUIC 的可靠性是三层网，每层有自己的坐标系，彼此独立又有精确的协作边界。</p>
+<h3 id="packet-number">第一层：Packet Number——确认层</h3>
+<p>Packet Number 只回答一个问题：<strong>这个包到了没有？</strong></p>
+<p>QUIC 给每个发出去的包分配一个 Packet Number（PN），这个编号<strong>单调递增，永不复用</strong>。即使某个包丢了需要重传，重传的新包也会使用一个全新的 PN——它和原来那个丢失的 PN 是两个完全不同的数字。</p>
+<p>这个看似简单的规则，带来了一个深远的后果：<strong>ACK 永远没有歧义。</strong></p>
+<p>当接收端发回一个 ACK 说"我收到了 PN 42"，发送端可以百分之百确定这指的是 PN 42 那次发送——不可能是别的任何一次。因为 PN 42 在整个连接的历史中只出现过一次，它唯一对应一个发送时刻。RTT 采样因此变得干净了：用 PN 42 的发送时刻减去收到 ACK 的时刻，就是这次传输的精确 RTT。不需要 Karn's Algorithm，不需要猜，不需要在丢包时放弃采样。</p>
+<p>注意 Packet Number 的职责边界：它<strong>只管确认，不管交付</strong>。PN 不告诉接收端"这段数据应该放在字节流的什么位置"——那是另一层的事。PN 也不决定"丢了之后应该恢复什么"——那也是另一层的事。PN 只做一件事：标记一次发送事件，让 ACK 能够无歧义地指向它。</p>
+<p>对比 TCP：TCP 的序号既管确认又管交付又管恢复，三个维度绑在一起。QUIC 的 Packet Number 只管确认——它把自己的职责收窄到了极致。</p>
+<h3 id="frame">第二层：Frame 语义——恢复层</h3>
+<p>当一个包被判定丢失后，QUIC 需要恢复的<strong>不是那个 Packet Number</strong>——PN 只是一次发送事件的标签，它已经永久过期了。QUIC 需要恢复的是那个 PN 里<strong>装的语义</strong>。</p>
+<p>这就是"恢复层"的含义：丢包之后，真正被恢复的是帧的语义，而不是包的外壳。</p>
+<p>而且，不同类型的帧有完全不同的恢复策略：</p>
+<ul>
+<li><strong>STREAM Frame 丢了</strong>：发送端把同样的 Stream 数据（相同的 Stream ID 和 Offset 范围）重新装进一个<strong>新 PN</strong> 的包里发出去。新的 PN 意味着确认层能无歧义地跟踪这次重传。</li>
+<li><strong>ACK Frame 丢了</strong>：根本不需要重传。为什么？因为 ACK 表达的是"截至此刻我收到了哪些包"这个状态——下一次发 ACK 时，最新的确认状态会自然覆盖掉旧的。旧的 ACK 丢了就丢了，没有信息损失。</li>
+<li><strong>MAX_DATA Frame 丢了</strong>：发送端重新发一个 MAX_DATA，但携带的是<strong>当前最新的窗口值</strong>，而不是丢失时的旧值。因为流控窗口只会变大不会变小，发最新值永远是正确的。</li>
+<li><strong>CRYPTO Frame 丢了</strong>：必须精确重传相同的握手数据——因为加密握手的语义不允许丢失任何一个字节。</li>
+</ul>
+<p>看到了吗？恢复的粒度是"语义"而不是"包"。有些语义需要精确重传（STREAM、CRYPTO），有些只需要发送最新值（MAX_DATA、MAX_STREAM_DATA），有些根本不需要重传（ACK）。<strong>这种差异化的恢复策略，只有在恢复层和确认层分离之后才有可能实现。</strong> 如果像 TCP 那样把确认和恢复绑在同一个序号上，你就只能做一件事：把那段序号对应的字节原样重发。</p>
+<h3 id="stream-offset">第三层：Stream Offset——交付层</h3>
+<p>接收端的每个 Stream 有自己独立的 Offset 序号空间。STREAM Frame 携带的 <code>(Stream ID, Offset, Length)</code> 三元组告诉接收端："这段数据属于 Stream X，从 Offset Y 开始，长度是 Z 字节。" 接收端根据这个信息，把数据放到对应 Stream 的正确位置。</p>
+<p>关键在于：<strong>交付只看 Stream Offset，不看 Packet Number。</strong></p>
+<p>Stream A 缺了 Offset 100-200 的数据？没关系，Stream B 的 Offset 0-500 已经全部到齐，可以立刻交付给应用层。Stream C 的 Offset 300-400 还在路上？不影响 Stream D 的完整交付。每个 Stream 的交付只取决于自己的 Offset 有没有连续，和其他 Stream、和 Packet Number 都没有关系。</p>
+<p>这就是 QUIC 消除跨流队头阻塞的结构基础——不是靠什么巧妙的调度算法，而是靠把交付层从确认层中彻底独立出来。交付只认 Stream Offset，确认只认 Packet Number，两者各自演进，互不拖拽。</p>
+<h3 id="_1">拓扑变化的一句话总结</h3>
+<p>TCP 是"一个序号驱动一条链"——序号决定确认、确认驱动判丢、判丢触发重传、重传恢复的还是那个序号、序号最终决定交付顺序。任何一个环节被卡住，整条链都跟着停转。</p>
+<p>QUIC 是"三个命名空间各管一层"——Packet Number 管确认，Frame 语义管恢复，Stream Offset 管交付。<strong>确认不拖交付，交付不拖恢复，恢复不拖确认。</strong> 三个维度不再是串联在一条链上的环节，而是在各自独立的坐标系中演进，又通过精确的接口协同工作。</p>
+<p>这不是简单的"拆分"或"优化"。如果你画一张依赖关系图，TCP 的是一条直线，QUIC 的是一个网——连锁反应不再是单向传导，而是在多个维度上独立展开。这是拓扑学意义上的结构变化。</p>
+<hr />
+<h2 id="134">13.4 三层之间的协作合约</h2>
+<p>三层分开了，但它们不是三个互不往来的孤岛。恰恰相反，三层之间有精确的协作边界——正是这些边界把三层从"各自独立的碎片"组织成了一个有机运转的整体。</p>
+<p><strong>第一个接口：确认层 → 判丢层。</strong></p>
+<p>当接收端发回 ACK，确认层会更新每个 Packet Number 的确认状态。如果某些 PN 长时间没有被确认——比如后面连续三个 PN 都收到了 ACK，但中间那个 PN 始终没有动静（包间隔阈值），或者超过了一定的时间阈值——判丢逻辑就会介入，把那些 PN 标记为"已丢失"。</p>
+<p>注意：判丢层的输入是 Packet Number 级别的——它只关心"哪些 PN 丢了"，不关心那些 PN 里装的是什么。</p>
+<p><strong>第二个接口：判丢层 → 恢复层。</strong></p>
+<p>判丢的输出不是"重发那个包"。判丢层做的事情是：把丢失的 PN 里携带的帧语义提取出来，标记为"需要恢复"，放入语义恢复队列。</p>
+<p>这是一个关键的转换点——从 Packet Number 的维度切换到了 Frame 语义的维度。判丢层说的是"PN 42 丢了，里面有一个 STREAM Frame（Stream 5, Offset 1000-1200）和一个 MAX_DATA Frame（窗口 65536）"，恢复层接到这个信息后，会根据帧类型决定恢复策略：STREAM 数据需要重发，MAX_DATA 需要用当前最新值重发，ACK 不需要重发。</p>
+<p><strong>第三个接口：恢复层 → 发送层。</strong></p>
+<p>恢复层决定了"需要恢复哪些语义"，但它不直接发包。发送层（PacketBuilder）拿到恢复队列后，要做一系列装配决策：这些语义应该装进哪个加密级别的包？一个包能装多少？需不需要和其他待发的控制帧一起搭车？最终用什么 PN？发送层把这些决策落实为一个个真实的 Packet，赋予新的 PN，交给 UDP 发出去。</p>
+<p>把这三个接口串起来，就是 QUIC 可靠性的完整工作流程：</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ACK 反馈
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  → 确认状态更新（哪些 PN 已确认）
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    → 判丢决策（哪些 PN 丢了）
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>      → 语义恢复队列（哪些帧需要恢复）
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        → PacketBuilder 组包（装进新 PN）
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>          → 新包发出
+</span></code></pre></div>
+<p>每一个箭头都是一次维度切换——从 PN 空间切到帧语义空间，再从帧语义空间切到新 PN 空间。这条流水线的结构值得记住，后续章节展开细节时，沿着这张图就能定位自己在哪个节点、上游传来了什么、下游期望什么。</p>
+<hr />
+<h2 id="135-quicx">13.5 quicX 为什么必须自己维护这套系统</h2>
+<p>三层模型是协议规范里的结构。但 quicX 作为 QUIC 的 C++ 实现，面对的是一个更实际的问题：<strong>为什么这套机制必须自己在用户态从零搭建？</strong></p>
+<p>答案藏在一个简单的事实里：<strong>一旦选择了 UDP，可靠性就不再是系统免费赠送的礼物。</strong></p>
+<p>TCP 的可靠性由操作系统内核提供。你用 TCP socket 写代码时，序号管理、ACK 确认、重传调度、按序交付——这些复杂度全部被内核封装掉了，你的应用代码看不到任何痕迹。但 QUIC 选择了 UDP 作为底层传输，而 UDP 的语义只有一个："把这个数据报从 A 搬到 B。" 到了没有？不知道。顺序对不对？不知道。丢了怎么办？自己想办法。</p>
+<p>这就意味着，quicX 必须在用户态<strong>自建</strong>整套三层体系。不是自建一条链——那是 TCP 的路线——而是自建一张三层网：</p>
+<ul>
+<li>
+<p><strong>确认层：</strong> quicX 的 <code>SendControl</code> 维护着每个 Packet Number Space 的发送记录——每个包什么时候发的、PN 是多少、里面装了什么帧。当 ACK 回来时，<code>OnPacketAck()</code> 更新确认状态；当某些 PN 超过阈值未被确认时，<code>DetectLostPackets()</code> 执行判丢逻辑。RTT 采样、PTO 定时器也都在这一层。</p>
+</li>
+<li>
+<p><strong>恢复层：</strong> <code>SendManager</code> 管理着语义恢复队列。当 <code>SendControl</code> 判定某些包丢失后，丢失包里的帧语义会被提取出来，进入待恢复队列。<code>SendManager</code> 根据帧类型决定恢复策略——STREAM 数据需要精确重传，控制帧需要发送最新值——然后通过 <code>GetPendingFrames()</code> 把待恢复的语义交给发送层。</p>
+</li>
+<li>
+<p><strong>交付层：</strong> <code>RecvStream</code> 维护着每个 Stream 自己的 Offset 空间。收到 STREAM Frame 后，<code>OnStreamFrame()</code> 根据 Offset 把数据放到正确位置；如果 Offset 连续了，就立刻交付给应用层的回调。Stream A 的 Offset 有洞，不影响 Stream B 的完整交付——这是交付层独立于确认层的直接体现。</p>
+</li>
+<li>
+<p><strong>发送层：</strong> <code>PacketBuilder</code> 负责最终的组包装配。它拿到恢复层的待发语义和新数据，在不同加密级别（Initial / Handshake / 1-RTT）之间做调度，考虑包容量、Padding 要求、Coalescing 策略，最终把这些语义装进一个个真实的 Packet 发出去。</p>
+</li>
+</ul>
+<p>这些模块不能各写各的，因为三层之间有紧密的协作合约。判丢会影响恢复队列的内容，恢复队列的内容会影响 PacketBuilder 的组包决策，PacketBuilder 的发包行为又会产生新的 PN 记录反馈给确认层。三层是一个有机整体，任何一层的边界定义不清，都会导致连锁的状态混乱。</p>
+<p><strong>quicX 的可靠性子系统，是整个连接层的核心骨架。</strong> ACK 解析、PTO 探测、语义重传、PacketBuilder 组包——所有这些模块都围绕这套三层骨架协同工作。骨架的边界定义不清，各模块之间的状态传递就会出现连锁混乱。</p>
+<p>这不是"重复造轮子"。这是选择 UDP 架构后的必然代价，也是 QUIC 能够实现"确认不拖交付"这个设计目标的工程基础。</p>
+<hr />
+<h2 id="136">13.6 四章各打开一层</h2>
+<p>沿着 13.4 那张流水线图往下走，后续四章各自负责打开一个节点。</p>
+<p>第 14 章打开确认层——三个 Packet Number Space 怎么划分，ACK 如何在各空间内精确表达，以及为什么 ACK 不能跨空间说话。没有准确的确认，后面一切都无从谈起。</p>
+<p>第 15 章打开判丢接口——发送方凭什么认定一个包"已经丢了"。在一个本来就乱序、抖动的网络里，"没收到 ACK"远远不等于"已经丢"。时间阈值和包间隔阈值的并存逻辑，以及 PTO 为什么像一个幽灵不断逼着连接试探对端，都在这一章拆解。</p>
+<p>第 16 章打开恢复层——丢了之后到底该补什么。STREAM 数据、CRYPTO 数据、控制帧、ACK 帧，不同类型的语义有完全不同的恢复策略。这里有卷三最关键的一次认知转折：丢的是包，恢复的是语义。</p>
+<p>第 17 章打开发送层——知道该恢复什么语义是一回事，真正把这些语义装进 Packet 发出去是另一回事。控制帧和流数据怎么竞争有限的包容量，恢复中的语义和全新数据怎么排优先级，加密级别怎么影响组包策略——PacketBuilder 是可靠性真正落地的装配线。</p>
+<hr />
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  回到页面顶部
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="页脚" >
+        
+          
+          <a href="../00_intro/" class="md-footer__link md-footer__link--prev" aria-label="上一页: 重构可靠传输：从包级确认到语义重传">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                上一页
+              </span>
+              <div class="md-ellipsis">
+                重构可靠传输：从包级确认到语义重传
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../14_pn_space_and_ack/" class="md-footer__link md-footer__link--next" aria-label="下一页: 14. ACK 的艺术: 序列号空间与确认边界">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                下一页
+              </span>
+              <div class="md-ellipsis">
+                14. ACK 的艺术: 序列号空间与确认边界
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.indexes", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "\u5df2\u590d\u5236", "clipboard.copy": "\u590d\u5236", "search.result.more.one": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.more.other": "\u5728\u8be5\u9875\u4e0a\u8fd8\u6709 # \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.none": "\u6ca1\u6709\u627e\u5230\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.one": "\u627e\u5230 1 \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.other": "# \u4e2a\u7b26\u5408\u6761\u4ef6\u7684\u7ed3\u679c", "search.result.placeholder": "\u952e\u5165\u4ee5\u5f00\u59cb\u641c\u7d22", "search.result.term.missing": "\u7f3a\u5c11", "select.version": "\u9009\u62e9\u5f53\u524d\u7248\u672c"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
